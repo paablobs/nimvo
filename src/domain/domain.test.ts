@@ -24,7 +24,7 @@ describe('domain contracts', () => {
       debts: [{ amountCents: 5, paidAt: null }, { amountCents: 7, paidAt: '2026-09-01T00:00:00.000Z' }],
       expenses: [{ amountCents: 3 }],
     })
-    expect(result).toEqual({ debtTotal: 12, debtPaid: 7, debtPending: 5, dailyExpenses: 3, realBalance: -20, availableBalance: -25 })
+    expect(result).toEqual({ debtTotal: 12, debtPaid: 7, debtPending: 5, dailyExpenses: 3, balance: -25 })
     expect(() => addCents(Number.MAX_SAFE_INTEGER, 1)).toThrow(RangeError)
   })
 
@@ -44,8 +44,7 @@ describe('domain contracts', () => {
       debtPaid: 200_000_000,
       debtPending: 22_616_334,
       dailyExpenses: 10_000_000,
-      realBalance: 140_000_000,
-      availableBalance: 117_383_666,
+      balance: 117_383_666,
     })
 
     expect(calculateMonthlySummary({
@@ -54,8 +53,7 @@ describe('domain contracts', () => {
       expenses,
     })).toMatchObject({
       debtPending: 0,
-      realBalance: 117_383_666,
-      availableBalance: 117_383_666,
+      balance: 117_383_666,
     })
   })
 })

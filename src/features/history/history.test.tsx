@@ -14,13 +14,13 @@ const historyRows = [
   {
     monthId: 'month-2', year: 2026, month: 9, currency: 'ARS', initialAmountCents: 200_000,
     debtTotal: 80_000, debtPending: 20_000, dailyExpenses: 30_000,
-    realBalance: 90_000, availableBalance: 90_000,
+    balance: 90_000,
     categoryBreakdown: [{ categoryId: 'archived', name: 'Comida vieja', amountCents: 30_000, isArchived: true }],
   },
   {
     monthId: 'month-1', year: 2026, month: 8, currency: 'ARS', initialAmountCents: -10_000,
     debtTotal: 0, debtPending: 0, dailyExpenses: 1_000,
-    realBalance: -11_000, availableBalance: -11_000, categoryBreakdown: [],
+    balance: -11_000, categoryBreakdown: [],
   },
 ] satisfies MonthlyHistoryRow[]
 

@@ -6,8 +6,7 @@ export interface MonthlySummary {
   debtPaid: Cents
   debtPending: Cents
   dailyExpenses: Cents
-  realBalance: Cents
-  availableBalance: Cents
+  balance: Cents
 }
 
 export interface MonthlySummaryInput {
@@ -83,8 +82,7 @@ export function calculateMonthlySummary(
   const debtPaid = addMany(debts.filter(paidOf).map(amountOf))
   const debtPending = addCents(debtTotal, -debtPaid)
   const dailyExpenses = addMany(expenses.map(amountOf))
-  const realBalance = addCents(addCents(initialBalance, -debtPaid), -dailyExpenses)
-  const availableBalance = addCents(addCents(initialBalance, -debtTotal), -dailyExpenses)
+  const balance = addCents(addCents(initialBalance, -debtTotal), -dailyExpenses)
 
-  return { debtTotal, debtPaid, debtPending, dailyExpenses, realBalance, availableBalance }
+  return { debtTotal, debtPaid, debtPending, dailyExpenses, balance }
 }

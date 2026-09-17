@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('crea un mes, agrega una deuda y actualiza los saldos al pagarla', async ({ page }) => {
+test('crea un mes, agrega una deuda y mantiene el saldo al pagarla', async ({ page }) => {
   await page.goto('/crear')
   await page.getByLabel('Contraseña', { exact: true }).fill('phase3-password')
   await page.getByLabel('Confirmar contraseña').fill('phase3-password')
@@ -18,10 +18,17 @@ test('crea un mes, agrega una deuda y actualiza los saldos al pagarla', async ({
   await page.getByRole('button', { name: 'Guardar deuda' }).click()
   await expect(page.getByText('Alquiler')).toBeVisible()
   await expect(page.getByRole('cell', { name: /250,00/ })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Resumen del mes' }).getByText(/750,00/)).toBeVisible()
+  const summary = page.getByRole('region', { name: 'Resumen del mes' })
+  const pendingDebt = summary.locator('.summary-cell').filter({ hasText: 'Deuda pendiente' })
+  const balance = summary.locator('.summary-cell').filter({ hasText: 'Saldo' })
+  await expect(pendingDebt).toContainText('250,00')
+  await expect(balance).toContainText('750,00')
 
   await page.getByRole('button', { name: 'Marcar pagada' }).click()
   await expect(page.getByText('Pagada')).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Resumen del mes' }).getByText(/^\$\s*0,00$/)).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Resumen del mes' }).getByText(/^\$\s*750,00$/)).toHaveCount(2)
+  await expect(pendingDebt).toContainText('0,00')
+  await expect(balance).toContainText('750,00')
+  await expect(summary.getByText(/^\$\s*750,00$/)).toHaveCount(1)
+  await expect(summary).not.toContainText('Saldo real')
+  await expect(summary).not.toContainText('Saldo disponible')
 })

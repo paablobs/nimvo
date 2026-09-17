@@ -586,7 +586,7 @@ h1 {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 30px;
   border-top: 1px solid var(--line-strong);
   border-bottom: 1px solid var(--line-strong);
@@ -677,7 +677,7 @@ h1 {
 .history-lede { margin: 18px 0 0; color: var(--muted); font-size: 0.75rem; }
 .history-empty { margin-top: 28px; }
 .history-table-scroll { margin-top: 28px; overflow-x: auto; border-top: 1px solid var(--line-strong); }
-.history-table { min-width: 1120px; }
+.history-table { min-width: 960px; }
 .history-table th,
 .history-table td { padding: 14px 12px; }
 .history-table .history-month-cell { min-width: 155px; font-weight: 500; text-transform: capitalize; }
@@ -705,9 +705,9 @@ h1 {
   .workspace-header,
   .month-toolbar { align-items: flex-start; flex-direction: column; }
   .workspace-actions { width: 100%; }
-  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .summary-cell:nth-child(2) { border-right: 0; }
-  .summary-cell:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  .summary-grid { grid-template-columns: 1fr; }
+  .summary-cell { border-right: 0; border-bottom: 1px solid var(--line); }
+  .summary-cell:last-child { border-bottom: 0; }
   .month-nav { width: 100%; justify-content: space-between; }
   .month-nav select { max-width: 145px; }
 }

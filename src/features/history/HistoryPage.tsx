@@ -67,8 +67,7 @@ function HistoryPage() {
           <th scope="col" className="amount-cell">Deuda total</th>
           <th scope="col" className="amount-cell">Deuda pendiente</th>
           <th scope="col" className="amount-cell">Gastos diarios</th>
-          <th scope="col" className="amount-cell">Saldo real</th>
-          <th scope="col" className="amount-cell">Saldo disponible</th>
+          <th scope="col" className="amount-cell">Saldo</th>
           <th scope="col"><span className="sr-only">Desglose</span></th>
         </tr></thead>
         <tbody>{rows.map((row, index) => {
@@ -99,11 +98,10 @@ function HistoryRow({ row, detailId, expanded, onToggle }: { row: MonthlyHistory
       <td className="amount-cell">{formatMoney(row.debtTotal)}</td>
       <td className="amount-cell">{formatMoney(row.debtPending)}</td>
       <td className="amount-cell">{formatMoney(row.dailyExpenses)}</td>
-      <td className="amount-cell">{formatMoney(row.realBalance)}</td>
-      <td className="amount-cell">{formatMoney(row.availableBalance)}</td>
+      <td className="amount-cell">{formatMoney(row.balance)}</td>
       <td className="history-detail-cell"><button className="button button-small" type="button" aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>{expanded ? 'Ocultar' : 'Ver'} desglose<span className="sr-only"> de {month}</span></button></td>
     </tr>
-    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={8}><div className="history-breakdown"><h3>Desglose de categorías · {month}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`Categorías de ${month}`}><thead><tr><th scope="col">Categoría</th><th scope="col">Estado</th><th scope="col" className="amount-cell">Gastos</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">Archivada</span> : 'Activa'}</td><td className="amount-cell">{formatMoney(category.amountCents)}</td></tr>)}</tbody></table>}</div></td></tr>}
+    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>Desglose de categorías · {month}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`Categorías de ${month}`}><thead><tr><th scope="col">Categoría</th><th scope="col">Estado</th><th scope="col" className="amount-cell">Gastos</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">Archivada</span> : 'Activa'}</td><td className="amount-cell">{formatMoney(category.amountCents)}</td></tr>)}</tbody></table>}</div></td></tr>}
   </>
 }
 

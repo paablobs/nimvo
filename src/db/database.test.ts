@@ -115,7 +115,7 @@ describe('local database v1', () => {
     db.close()
   })
 
-  it('updates template activity and debt paidAt without changing available balance', async () => {
+  it('updates template activity and debt paidAt without changing the balance', async () => {
     const db = await openDatabase()
     const templates = new TemplatesRepository(db.raw)
     const template = templates.create({ id: 't', concept: 'Cuota', defaultAmountCents: 10, dueDay: null, isActive: true })
@@ -130,7 +130,7 @@ describe('local database v1', () => {
     expect(paid.updatedAt).not.toBe(debt.updatedAt)
     const unpaidSummary = calculateMonthlySummary({ month, debts: [debt], expenses: [] })
     const paidSummary = calculateMonthlySummary({ month, debts: [paid], expenses: [] })
-    expect(paidSummary.availableBalance).toBe(unpaidSummary.availableBalance)
+    expect(paidSummary.balance).toBe(unpaidSummary.balance)
     db.close()
   })
 

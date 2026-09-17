@@ -35,7 +35,7 @@ describe('history repository', () => {
       {
         monthId: 'september', year: 2026, month: 9, currency: 'ARS', initialAmountCents: 350_000_000,
         debtTotal: 222_616_334, debtPending: 22_616_334, dailyExpenses: 12_000_000,
-        realBalance: 138_000_000, availableBalance: 115_383_666,
+        balance: 115_383_666,
         categoryBreakdown: [
           { categoryId: 'archived', name: 'Comida', isArchived: true, amountCents: 10_000_000 },
           { categoryId: 'current', name: 'Transporte', isArchived: false, amountCents: 2_000_000 },
@@ -43,7 +43,7 @@ describe('history repository', () => {
       },
       {
         monthId: 'august', year: 2026, month: 8, currency: 'ARS', initialAmountCents: 50_000_000,
-        debtTotal: 0, debtPending: 0, dailyExpenses: 0, realBalance: 50_000_000, availableBalance: 50_000_000,
+        debtTotal: 0, debtPending: 0, dailyExpenses: 0, balance: 50_000_000,
         categoryBreakdown: [],
       },
     ] satisfies MonthlyHistoryRow[])
@@ -56,7 +56,7 @@ describe('history repository', () => {
     reopened.close()
   })
 
-  it('moves a debt between pending and paid balances without changing available balance', async () => {
+  it('moves a debt between pending and paid balances without changing the balance', async () => {
     const db = await openDatabase()
     const month = new MonthsRepository(db.raw).create(2026, 9, 100, 'month')
     const debt = new DebtsRepository(db.raw).create({ id: 'debt', monthId: month.id, templateId: null, concept: 'Cuota', amountCents: 40, dueDate: null, paidAt: null })
@@ -64,8 +64,8 @@ describe('history repository', () => {
     const unpaid = new HistoryRepository(db.raw).list()[0]
     debts.update(debt.id, { paidAt: '2026-09-01T00:00:00.000Z' })
     const paid = new HistoryRepository(db.raw).list()[0]
-    expect(unpaid).toMatchObject({ debtTotal: 40, debtPending: 40, realBalance: 100, availableBalance: 60 })
-    expect(paid).toMatchObject({ debtTotal: 40, debtPending: 0, realBalance: 60, availableBalance: 60 })
+    expect(unpaid).toMatchObject({ debtTotal: 40, debtPending: 40, balance: 60 })
+    expect(paid).toMatchObject({ debtTotal: 40, debtPending: 0, balance: 60 })
     db.close()
   })
 

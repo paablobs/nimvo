@@ -17,8 +17,7 @@ export interface MonthlyHistoryRow {
   debtTotal: Cents
   debtPending: Cents
   dailyExpenses: Cents
-  realBalance: Cents
-  availableBalance: Cents
+  balance: Cents
   categoryBreakdown: CategoryBreakdown[]
 }
 
@@ -33,7 +32,7 @@ const amount = (value: unknown, field: string): Cents => {
 }
 
 /** Calculates history balances from already aggregated, validated amounts. */
-export const calculateMonthlyHistoryBalances = (input: MonthlyHistoryBalanceInput): Pick<MonthlyHistoryRow, 'realBalance' | 'availableBalance'> => {
+export const calculateMonthlyHistoryBalances = (input: MonthlyHistoryBalanceInput): Pick<MonthlyHistoryRow, 'balance'> => {
   const initialAmountCents = amount(input.initialAmountCents, 'initial_amount_cents')
   const debtTotal = amount(input.debtTotal, 'debt_total')
   const debtPending = amount(input.debtPending, 'debt_pending')
@@ -42,9 +41,7 @@ export const calculateMonthlyHistoryBalances = (input: MonthlyHistoryBalanceInpu
     throw new RangeError('Los totales del historial son inválidos')
   }
 
-  const debtPaid = addCents(debtTotal, -debtPending)
   return {
-    realBalance: addCents(addCents(initialAmountCents, -debtPaid), -dailyExpenses),
-    availableBalance: addCents(addCents(initialAmountCents, -debtTotal), -dailyExpenses),
+    balance: addCents(addCents(initialAmountCents, -debtTotal), -dailyExpenses),
   }
 }
