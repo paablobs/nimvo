@@ -1,0 +1,5 @@
+export { CategoriesRepository } from './categories.ts'
+export { DebtsRepository } from './debts.ts'
+export { ExpensesRepository } from './expenses.ts'
+export { MonthsRepository } from './months.ts'
+export { TemplatesRepository } from './templates.ts'

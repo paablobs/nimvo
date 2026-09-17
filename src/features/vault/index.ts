@@ -1,0 +1,6 @@
+export { VaultSession } from './VaultSession.ts'
+export type { DatabaseClientLike, SaveResult, VaultSessionOptions, VaultSnapshot, VaultStatus } from './VaultSession.ts'
+export { VaultProvider } from './VaultProvider.tsx'
+export type { VaultProviderProps } from './VaultProvider.tsx'
+export { useVaultSession } from './useVaultSession.ts'
+export type { VaultContextValue } from './VaultContext.ts'
