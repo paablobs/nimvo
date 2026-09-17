@@ -7,12 +7,14 @@ import type { DomainOperation } from '../../db/worker/protocol.ts'
 import type { Debt, Month, RecurringDebtTemplate } from '../../domain/types.ts'
 import { VaultProvider } from '../vault/VaultProvider.tsx'
 import { VaultSession, type DatabaseClientLike } from '../vault/VaultSession.ts'
+import type { VaultFileAccessLike, VaultFileHandle } from '../vault/VaultFileAccess.ts'
 import VaultHomePage from '../vault/VaultHomePage.tsx'
 import MonthCreationDialog from './MonthCreationDialog.tsx'
 
 const month: Month = { id: 'month-1', year: 2026, month: 9, initialAmountCents: 100000, currency: 'ARS', createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z' }
 const template: RecurringDebtTemplate = { id: 'template-1', concept: 'Alquiler', defaultAmountCents: 75000, dueDay: 10, isActive: true, createdAt: month.createdAt, updatedAt: month.updatedAt }
 const makeClient = (operation: (value: DomainOperation) => unknown): DatabaseClientLike => ({ open: vi.fn(async () => undefined), export: vi.fn(async () => new Uint8Array()), close: vi.fn(async () => undefined), operation: vi.fn(async (value: DomainOperation) => operation(value)) as DatabaseClientLike['operation'] })
+const makeFileAccess = (directFileAccessSupported: boolean): VaultFileAccessLike => ({ directFileAccessSupported, open: vi.fn(async () => null), saveAs: vi.fn(async () => null), write: vi.fn(async () => undefined) })
 const renderInVault = (session: VaultSession, children: React.ReactNode) => render(<ChakraProvider value={defaultSystem}><VaultProvider session={session}><MemoryRouter>{children}</MemoryRouter></VaultProvider></ChakraProvider>)
 
 describe('monthly workspace', () => {
@@ -68,5 +70,55 @@ describe('monthly workspace', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Marcar pagada' }))
     await waitFor(() => expect(screen.getByText('Pagada')).toBeVisible())
     expect(summary.getByText(/^\$\s*0,00$/)).toBeVisible()
+  })
+
+  it('shows direct file actions only when the browser supports them', async () => {
+    const operation = (value: DomainOperation) => {
+      if (value.kind === 'months.list') return [month]
+      if (value.kind === 'templates.list') return []
+      if (value.kind === 'categories.list') return []
+      if (value.kind === 'debts.list' || value.kind === 'expenses.list') return []
+      return undefined
+    }
+    const target: VaultFileHandle = {
+      name: 'finanzas.moneo',
+      getFile: vi.fn(async () => new Blob()),
+      createWritable: vi.fn(async () => ({
+        write: vi.fn(async () => undefined),
+        close: vi.fn(async () => undefined),
+      })),
+    }
+    const fileAccess = makeFileAccess(true)
+    vi.mocked(fileAccess.saveAs).mockResolvedValue({ name: 'finanzas.moneo', target })
+    const directSession = new VaultSession({ createClient: () => makeClient(operation), fileAccess })
+    await directSession.create('test-password')
+    renderInVault(directSession, <VaultHomePage />)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Elegir dónde guardar' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Guardar', exact: true })).toBeVisible())
+    expect(screen.getByText('Archivo vinculado: finanzas.moneo')).toBeVisible()
+    await user.click(screen.getByText('Acciones'))
+    const directMenu = screen.getByText('Acciones').closest('details') as HTMLElement
+    expect(within(directMenu).getByRole('button', { name: 'Guardar como…' })).toBeVisible()
+    expect(within(directMenu).getByRole('button', { name: 'Descargar copia' })).toBeVisible()
+  })
+
+  it('uses one download action when direct file access is unavailable', async () => {
+    const operation = (value: DomainOperation) => {
+      if (value.kind === 'months.list') return [month]
+      if (value.kind === 'templates.list') return []
+      if (value.kind === 'categories.list') return []
+      if (value.kind === 'debts.list' || value.kind === 'expenses.list') return []
+      return undefined
+    }
+    const session = new VaultSession({ createClient: () => makeClient(operation), fileAccess: makeFileAccess(false) })
+    await session.create('test-password')
+    renderInVault(session, <VaultHomePage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Descargar copia' })).toBeVisible())
+    await userEvent.setup().click(screen.getByText('Acciones'))
+    const fallbackMenu = screen.getByText('Acciones').closest('details') as HTMLElement
+    expect(within(fallbackMenu).queryByRole('button', { name: 'Guardar como…' })).toBeNull()
+    expect(within(fallbackMenu).queryByRole('button', { name: 'Descargar copia' })).toBeNull()
+    expect(within(fallbackMenu).getByRole('link', { name: 'Historial' })).toBeVisible()
   })
 })

@@ -1,16 +1,23 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
 
+async function disableDirectFileAccess(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'showOpenFilePicker', { configurable: true, value: undefined })
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: undefined })
+  })
+}
+
 async function createCopy(page: Page, testInfo: TestInfo) {
+  await disableDirectFileAccess(page)
   await page.goto('/crear')
   await page.getByLabel('Contraseña', { exact: true }).fill('phase2-password')
   await page.getByLabel('Confirmar contraseña').fill('phase2-password')
   await page.getByRole('button', { name: 'Crear bóveda' }).click()
   await expect(page.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
-  await page.locator('summary', { hasText: 'Acciones' }).click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Guardar copia' }).click(),
+    page.getByRole('button', { name: 'Descargar copia' }).click(),
   ])
   expect(download.suggestedFilename()).toMatch(/^moneo-\d{4}-\d{2}-\d{2}-\d{4}\.moneo$/)
   const path = await download.path()

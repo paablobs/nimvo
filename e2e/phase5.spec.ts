@@ -4,6 +4,13 @@ import AxeBuilder from '@axe-core/playwright'
 const baseURL = 'http://127.0.0.1:4173'
 const password = 'phase5-password'
 
+async function disableDirectFileAccess(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'showOpenFilePicker', { configurable: true, value: undefined })
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: undefined })
+  })
+}
+
 async function createVault(page: Page) {
   await page.goto('/crear')
   await page.getByLabel('Contraseña', { exact: true }).fill(password)
@@ -88,16 +95,17 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
   const chromiumContext = await chromiumBrowser.newContext({ baseURL })
   const chromiumPage = await chromiumContext.newPage()
   try {
+    await disableDirectFileAccess(chromiumPage)
     await createVault(chromiumPage)
     await createMonth(chromiumPage, '9', '100000')
-    await chromiumPage.locator('summary', { hasText: 'Acciones' }).click()
     const firstDownload = chromiumPage.waitForEvent('download')
-    await chromiumPage.getByRole('button', { name: 'Guardar copia' }).click()
+    await chromiumPage.getByRole('button', { name: 'Descargar copia' }).click()
     const chromiumFile = testInfo.outputPath('phase5-chromium.moneo')
     await (await firstDownload).saveAs(chromiumFile)
 
     const firefoxContext = await firefoxBrowser.newContext({ baseURL })
     const firefoxPage = await firefoxContext.newPage()
+    await disableDirectFileAccess(firefoxPage)
     await firefoxPage.goto('/abrir')
     await firefoxPage.locator('#vault-file').setInputFiles(chromiumFile)
     await firefoxPage.getByLabel('Contraseña', { exact: true }).fill(password)
@@ -109,9 +117,8 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
     await expect(firefoxHistory.getByRole('row').nth(1)).toContainText('100.000,00')
     await firefoxPage.getByRole('link', { name: 'Volver al mes', exact: true }).first().click()
     await expect(firefoxPage.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
-    await firefoxPage.locator('summary', { hasText: 'Acciones' }).click()
     const secondDownload = firefoxPage.waitForEvent('download')
-    await firefoxPage.getByRole('button', { name: 'Guardar copia' }).click()
+    await firefoxPage.getByRole('button', { name: 'Descargar copia' }).click()
     const firefoxFile = testInfo.outputPath('phase5-firefox.moneo')
     await (await secondDownload).saveAs(firefoxFile)
 
