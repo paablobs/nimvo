@@ -8,6 +8,8 @@ import VaultHomePage from '../features/vault/VaultHomePage.tsx'
 import HistoryPage from '../features/history/HistoryPage.tsx'
 import { VaultProvider } from '../features/vault/VaultProvider.tsx'
 
+const routerBaseName = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '')
+
 function NotFoundPage() {
   return (
     <section className="page-section compact-section">
@@ -21,7 +23,7 @@ function NotFoundPage() {
 function NimvoApp() {
   return (
     <VaultProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBaseName}>
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<LandingPage />} />

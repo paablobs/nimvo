@@ -41,8 +41,8 @@ Marcar una deuda como pagada reduce la deuda pendiente, pero no cambia el saldo:
 ## Instalación
 
 ```sh
-git clone https://github.com/paablobs/moneo.git
-cd moneo
+git clone https://github.com/paablobs/nimvo.git
+cd nimvo
 nvm use
 npm ci
 npm run dev
@@ -186,6 +186,8 @@ La fuente, SQLite WASM y el resto de los recursos se empaquetan con la aplicaci�
 
 El acceso directo al sistema de archivos requiere un contexto seguro: HTTPS en producción o localhost durante el desarrollo.
 
+Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el workflow `.github/workflows/pages.yml`. El sitio del repositorio usa la ruta base `/nimvo/` y genera un fallback `404.html` para las rutas de React Router.
+
 ## Limitaciones actuales
 
 - Una sola moneda por archivo: ARS.
@@ -196,3 +198,74 @@ El acceso directo al sistema de archivos requiere un contexto seguro: HTTPS en p
 - Sin aplicación móvil nativa.
 - Sin recuperación de contraseña.
 - Cerrar con cambios sin guardar puede provocar pérdida de datos.
+
+# English
+
+Nimvo is a local-first web application for managing monthly finances as a spreadsheet. It tracks months, recurring debts, daily expenses, categories, balances, and historical comparisons in one encrypted `.nimvo` file.
+
+It has no backend, user accounts, or remote database. SQLite runs inside the browser, and financial data is neither stored in `localStorage` nor sent over the network. The only persisted browser preference is the visual theme.
+
+## Features
+
+- Create and open password-protected vaults.
+- Track an editable starting amount for each month.
+- Create recurring debt templates and apply them to new months.
+- Create, edit, pay, and delete debts.
+- Create, edit, and delete daily expenses.
+- Create, rename, and archive expense categories.
+- Review expenses by category and compare monthly history.
+- Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
+- Warn about unsaved changes and switch between light and dark themes.
+
+Amounts use ARS and `es-AR` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is the starting amount minus total debt and daily expenses. Marking a debt as paid changes the pending debt amount but not the balance because the debt was already included in the total.
+
+## Requirements and setup
+
+- Node.js 24 LTS.
+- npm.
+- Chromium or Firefox.
+- HTTPS or localhost for direct file-system access in Chromium.
+
+```sh
+git clone https://github.com/paablobs/nimvo.git
+cd nimvo
+nvm use
+npm ci
+npm run dev
+```
+
+There are no required environment variables. Use `npm run build` and `npm run preview` to check the production build locally.
+
+## File handling and backups
+
+Create a new vault with a password or open an existing `.nimvo` file. Save or download a fresh copy after making changes. Keep at least one older backup, avoid editing the same copy on two devices at once, and wait for cloud-synced folders to finish syncing before switching devices.
+
+Passwords cannot be recovered. Without the password, the encrypted financial data cannot be recovered either. Current versions can import legacy `.moneo` files and save the next copy in the `.nimvo` format.
+
+## Security
+
+The `.nimvo` format is a versioned binary container, not a plain SQLite database. It uses AES-256-GCM for authenticated encryption and PBKDF2-HMAC-SHA-256 with a random salt and 1,800,000 iterations for key derivation. Each export receives a new salt and IV. Modified, truncated, oversized, or incorrectly decrypted files are rejected before partial data is loaded.
+
+The decrypted database remains in the SQLite Web Worker memory. Sensitive buffers are overwritten when they are no longer needed, within JavaScript runtime limitations. The maximum accepted container size is 128 MiB.
+
+## Development
+
+The application uses React 19, TypeScript 6, Vite 8, Chakra UI 3, React Router 7, sql.js, Web Crypto, and Zod. Vitest and React Testing Library cover unit and component behavior; Playwright covers full Chromium and Firefox flows.
+
+```sh
+npm run lint
+npm test
+npm run test:watch
+npm run test:e2e
+npm run build
+```
+
+## Deployment and offline behavior
+
+Pushes to `main` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. The project site uses `/nimvo/` as its base path and includes a `404.html` fallback for React Router routes.
+
+The application bundles its source, SQLite WASM, and fonts. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
+
+## Current limitations
+
+Nimvo supports one currency per vault: ARS. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts, native mobile application, or password recovery.
