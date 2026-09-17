@@ -1,6 +1,6 @@
 import { Button, Input } from '@chakra-ui/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Category, Debt, Expense, Month, RecurringDebtTemplate } from '../../domain/types.ts'
 import { calculateMonthlySummary } from '../../domain/summary.ts'
 import { formatMoney } from '../../domain/money.ts'
@@ -16,6 +16,8 @@ const monthLabel = (month: Month): string => new Intl.DateTimeFormat('es-AR', { 
 
 function VaultHomePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedMonthId = searchParams.get('month')
   const vault = useVaultSession()
   const [months, setMonths] = useState<Month[]>([])
   const [templates, setTemplates] = useState<RecurringDebtTemplate[]>([])
@@ -45,10 +47,12 @@ function VaultHomePage() {
       setMonths(nextMonths)
       setTemplates(nextTemplates)
       setCategories(nextCategories ?? [])
-      setSelectedId((current) => current && nextMonths.some((month) => month.id === current) ? current : nextMonths[0]?.id ?? null)
+      setSelectedId((current) => requestedMonthId && nextMonths.some((month) => month.id === requestedMonthId)
+        ? requestedMonthId
+        : current && nextMonths.some((month) => month.id === current) ? current : nextMonths[0]?.id ?? null)
       setLoaded(true)
     } catch { setError('No se pudo cargar la bóveda.') }
-  }, [vault])
+  }, [vault, requestedMonthId])
 
   const loadMonthDetails = useCallback(async (monthId: string) => {
     const request = detailsRequest.current + 1
@@ -108,7 +112,7 @@ function VaultHomePage() {
   if (vault.status !== 'unlocked') return <section className="page-section compact-section"><p className="eyebrow">Bóveda bloqueada</p><h1>Abre un archivo para continuar.</h1><Button className="button button-primary" onClick={() => navigate('/abrir')}>Abrir archivo</Button></section>
 
   return <section className="page-section vault-workspace">
-    <header className="workspace-header"><div><p className="eyebrow">Bóveda</p><h1>Tu archivo está listo.</h1><p className="workspace-title">Planilla mensual</p></div><div className="workspace-actions"><span className="dirty-state" aria-live="polite">{vault.dirty ? 'Cambios sin guardar' : 'Guardado'}</span><Button className="button button-primary" onClick={save} loading={busy} disabled={busy}>Guardar copia</Button><Button className="button button-secondary" onClick={lock} disabled={busy}>Bloquear</Button><details className="actions-menu"><summary>Acciones</summary><div className="menu-popover"><button type="button" onClick={() => setShowTemplates(true)}>Plantillas</button><button type="button" onClick={() => setShowCategories(true)}>Categorías</button><button type="button" onClick={lock} disabled={busy}>Bloquear</button></div></details></div></header>
+    <header className="workspace-header"><div><p className="eyebrow">Bóveda</p><h1>Tu archivo está listo.</h1><p className="workspace-title">Planilla mensual</p></div><div className="workspace-actions"><span className="dirty-state" aria-live="polite">{vault.dirty ? 'Cambios sin guardar' : 'Guardado'}</span><Button className="button button-primary" onClick={save} loading={busy} disabled={busy}>Guardar copia</Button><Button className="button button-secondary" onClick={lock} disabled={busy}>Bloquear</Button><details className="actions-menu"><summary>Acciones</summary><div className="menu-popover"><Link className="menu-link" to="/boveda/historial">Historial</Link><button type="button" onClick={() => setShowTemplates(true)}>Plantillas</button><button type="button" onClick={() => setShowCategories(true)}>Categorías</button><button type="button" onClick={lock} disabled={busy}>Bloquear</button></div></details></div></header>
     {error && <p className="form-message error" role="alert">{error}</p>}
     {!loaded ? <p className="empty-note" role="status">Cargando meses…</p> : <>
       <div className="month-toolbar"><div className="month-nav"><Button className="button button-small" type="button" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>← {previous ? monthLabel(previous) : 'Anterior'}</Button><label htmlFor="month-selector" className="sr-only">Seleccionar mes</label><select id="month-selector" value={selectedId ?? ''} onChange={(event) => setSelectedId(event.target.value || null)}><option value="" disabled>Seleccioná un mes</option>{months.map((month) => <option key={month.id} value={month.id}>{monthLabel(month)}</option>)}</select><Button className="button button-small" type="button" onClick={() => next && setSelectedId(next.id)} disabled={!next}>{next ? monthLabel(next) : 'Siguiente'} →</Button></div><Button className="button button-secondary" type="button" onClick={() => setShowNew(true)}>Nuevo mes</Button></div>

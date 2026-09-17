@@ -5,6 +5,7 @@ import CreateVaultPage from '../features/vault/CreateVaultPage.tsx'
 import LandingPage from '../features/vault/LandingPage.tsx'
 import OpenVaultPage from '../features/vault/OpenVaultPage.tsx'
 import VaultHomePage from '../features/vault/VaultHomePage.tsx'
+import HistoryPage from '../features/history/HistoryPage.tsx'
 import { VaultProvider } from '../features/vault/VaultProvider.tsx'
 
 function NotFoundPage() {
@@ -27,6 +28,7 @@ function MoneoApp() {
             <Route path="/crear" element={<CreateVaultPage />} />
             <Route path="/abrir" element={<OpenVaultPage />} />
             <Route path="/boveda" element={<VaultHomePage />} />
+            <Route path="/boveda/historial" element={<HistoryPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

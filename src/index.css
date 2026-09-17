@@ -544,6 +544,17 @@ h1 {
 
 .menu-popover button:hover { background: var(--surface-muted); }
 
+.menu-popover .menu-link {
+  display: block;
+  padding: 10px;
+  color: var(--text);
+  font-size: 0.72rem;
+  text-decoration: none;
+}
+
+.menu-popover .menu-link:hover,
+.menu-popover .menu-link:focus-visible { background: var(--surface-muted); }
+
 .month-toolbar {
   margin: 24px 0;
 }
@@ -641,6 +652,48 @@ h1 {
 .confirm-box { margin-top: 18px; padding: 16px; border: 1px solid var(--danger); color: var(--danger); font-size: 0.72rem; }
 .confirm-box p { margin: 8px 0; }
 .confirm-box .form-actions { margin-top: 12px; }
+
+.history-page {
+  max-width: 1180px;
+  padding: 42px 0 80px;
+}
+
+.history-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.history-header h1 { font-size: clamp(2rem, 5vw, 4rem); }
+.history-lede { margin: 18px 0 0; color: var(--muted); font-size: 0.75rem; }
+.history-empty { margin-top: 28px; }
+.history-table-scroll { margin-top: 28px; overflow-x: auto; border-top: 1px solid var(--line-strong); }
+.history-table { min-width: 1120px; }
+.history-table th,
+.history-table td { padding: 14px 12px; }
+.history-table .history-month-cell { min-width: 155px; font-weight: 500; text-transform: capitalize; }
+.history-month-cell span { display: block; }
+.history-month-cell a { display: inline-block; margin-top: 8px; color: var(--muted); font-size: 0.62rem; font-weight: 400; text-transform: none; }
+.history-month-cell a:hover { color: var(--text); }
+.history-detail-cell { text-align: right !important; }
+.history-detail-cell .button { white-space: nowrap; }
+.history-detail-row > td { padding: 0; background: var(--surface-muted); }
+.history-breakdown { padding: 20px 24px 24px; }
+.history-breakdown h3 { margin: 0 0 14px; font-size: 0.82rem; font-weight: 500; }
+.category-history-table { width: min(100%, 680px); border-collapse: collapse; font-size: 0.7rem; }
+.category-history-table th,
+.category-history-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.category-history-table th { font-weight: 500; }
+.category-history-table .amount-cell { text-align: right; }
+.archived-label { color: var(--muted); }
+
+@media (max-width: 760px) {
+  .history-header { align-items: flex-start; flex-direction: column; }
+  .history-page { padding-top: 25px; }
+}
 
 @media (max-width: 760px) {
   .workspace-header,

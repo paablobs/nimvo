@@ -24,9 +24,9 @@ function LandingPage() {
         </p>
       </div>
       <aside className="landing-aside" aria-label="Estado de la versión">
-        <span className="aside-label">Ahora</span>
-        <strong>Fase 2</strong>
-        <p>Crear, abrir, guardar y bloquear una bóveda local cifrada.</p>
+        <span className="aside-label">Versión actual</span>
+        <strong>Moneo V1</strong>
+        <p>Registra meses, deudas y gastos, y conserva tu historial en un archivo local cifrado.</p>
       </aside>
     </section>
   )

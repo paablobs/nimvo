@@ -1,5 +1,5 @@
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -14,9 +14,11 @@ const stamp = '2026-01-01T00:00:00.000Z'
 const active: Category = { id: 'cat-active', name: 'Casa', colorToken: null, isArchived: false, createdAt: stamp }
 const archived: Category = { id: 'cat-archived', name: 'Viajes', colorToken: null, isArchived: true, createdAt: stamp }
 
-function renderWorkspace(initialCategories: Category[], initialExpenses: Expense[] = []) {
+function renderWorkspace(initialCategories: Category[], initialExpenses: Expense[] = [], options: { deferCategoriesRefresh?: boolean } = {}) {
   let categories = initialCategories
   let expenses = initialExpenses
+  let createdExpenseCategory: string | undefined
+  let releaseCategoriesRefresh: (() => void) | undefined
   const client: DatabaseClientLike = {
     open: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
@@ -28,6 +30,7 @@ function renderWorkspace(initialCategories: Category[], initialExpenses: Expense
         return category
       }
       if (operation.kind === 'expenses.create') {
+        createdExpenseCategory = operation.input.categoryId
         const expense: Expense = { id: 'expense-new', ...operation.input, description: operation.input.description ?? null, createdAt: stamp, updatedAt: stamp }
         expenses = [...expenses, expense]
         return expense
@@ -50,9 +53,15 @@ function renderWorkspace(initialCategories: Category[], initialExpenses: Expense
   function Harness() {
     const [viewCategories, setViewCategories] = useState(categories)
     const [viewExpenses, setViewExpenses] = useState(expenses)
-    return <ChakraProvider value={defaultSystem}><VaultProvider session={session}><ExpensesPanel monthId="month-1" year={2026} month={1} categories={viewCategories} expenses={viewExpenses} onRefresh={async () => setViewExpenses([...expenses])} onCategoriesRefresh={async () => setViewCategories([...categories])} /><CategoriesPanel categories={viewCategories} onRefresh={async () => setViewCategories([...categories])} onClose={vi.fn()} /></VaultProvider></ChakraProvider>
+    return <ChakraProvider value={defaultSystem}><VaultProvider session={session}><ExpensesPanel monthId="month-1" year={2026} month={1} categories={viewCategories} expenses={viewExpenses} onRefresh={async () => setViewExpenses([...expenses])} onCategoriesRefresh={async () => { setViewCategories([...categories]); if (options.deferCategoriesRefresh) await new Promise<void>((resolve) => { releaseCategoriesRefresh = resolve }) }} /><CategoriesPanel categories={viewCategories} onRefresh={async () => setViewCategories([...categories])} onClose={vi.fn()} /></VaultProvider></ChakraProvider>
   }
-  return { session, render: () => render(<Harness />) }
+  return {
+    session,
+    render: () => render(<Harness />),
+    releaseCategoriesRefresh: () => releaseCategoriesRefresh?.(),
+    deferCategoriesRefresh: () => { options.deferCategoriesRefresh = true },
+    getCreatedExpenseCategory: () => createdExpenseCategory,
+  }
 }
 
 describe('expenses UI', () => {
@@ -71,6 +80,26 @@ describe('expenses UI', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar gasto' }))
     expect(await screen.findByText('Supermercado')).toBeVisible()
     expect(screen.getAllByText('Comida').length).toBeGreaterThan(0)
+  })
+
+  it('keeps the new category when a concurrent draft event arrives during refresh', async () => {
+    const user = userEvent.setup()
+    const workspace = renderWorkspace([active], [], { deferCategoriesRefresh: true })
+    await workspace.session.create('test-password')
+    workspace.render()
+    await user.click(screen.getByRole('button', { name: 'Nuevo gasto' }))
+    await user.click(screen.getByRole('button', { name: 'Nueva categoría' }))
+    await user.type(screen.getByLabelText('Nombre de categoría'), 'Comida')
+    const createClick = user.click(screen.getByRole('button', { name: 'Crear y usar' }))
+    const description = screen.getByLabelText('Descripción (opcional)')
+    await waitFor(() => expect(description).toBeDisabled())
+    fireEvent.change(description, { target: { value: 'Evento concurrente' } })
+    workspace.releaseCategoriesRefresh()
+    await createClick
+    await waitFor(() => expect(screen.getByLabelText('Categoría')).toHaveValue('cat-new'))
+    await user.type(screen.getByLabelText('Monto (ARS)'), '123')
+    await user.click(screen.getByRole('button', { name: 'Guardar gasto' }))
+    expect(workspace.getCreatedExpenseCategory()).toBe('cat-new')
   })
 
   it('keeps archived category names in history and excludes them from a new expense', async () => {

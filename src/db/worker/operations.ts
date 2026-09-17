@@ -4,6 +4,7 @@ import type { IdFactory } from '../types.ts'
 import { CategoriesRepository } from '../repositories/categories.ts'
 import { DebtsRepository } from '../repositories/debts.ts'
 import { ExpensesRepository } from '../repositories/expenses.ts'
+import { HistoryRepository } from '../repositories/history.ts'
 import { MonthsRepository } from '../repositories/months.ts'
 import { TemplatesRepository } from '../repositories/templates.ts'
 import type { DomainOperation } from './protocol.ts'
@@ -18,6 +19,7 @@ export const executeOperation = (db: Database, operation: DomainOperation, ids?:
     case 'months.delete': return new MonthsRepository(db, factory).delete(operation.id)
     case 'months.createWithDebts': return new MonthsRepository(db, factory).createWithDebts(operation.input)
     case 'months.createWithTemplates': return new MonthsRepository(db, factory).createWithTemplates(operation.input, operation.templateIds)
+    case 'history.list': return new HistoryRepository(db).list()
     case 'categories.list': return new CategoriesRepository(db, factory).list(operation.includeArchived)
     case 'categories.get': return new CategoriesRepository(db, factory).getById(operation.id)
     case 'categories.create': return new CategoriesRepository(db, factory).create(operation.input)

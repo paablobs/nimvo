@@ -1,8 +1,9 @@
 export type IdFactory = () => string
 
 import type { Category, Debt, Expense, Month, RecurringDebtTemplate } from '../domain/types.ts'
+import type { MonthlyHistoryRow } from '../domain/history.ts'
 
-export type { Category, Debt, Expense, Month, RecurringDebtTemplate }
+export type { Category, Debt, Expense, Month, MonthlyHistoryRow, RecurringDebtTemplate }
 
 export type NewCategory = Omit<Category, 'id' | 'createdAt'> & Partial<Pick<Category, 'id' | 'createdAt'>>
 export type NewTemplate = Omit<RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt'>>

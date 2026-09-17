@@ -50,8 +50,10 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories])
-  const activeCategories = categories.filter((category) => !category.isArchived)
+  const [optimisticCategory, setOptimisticCategory] = useState<Category | null>(null)
+  const visibleCategories = useMemo(() => optimisticCategory && !categories.some((category) => category.id === optimisticCategory.id) ? [...categories, optimisticCategory] : categories, [categories, optimisticCategory])
+  const categoryById = useMemo(() => new Map(visibleCategories.map((category) => [category.id, category])), [visibleCategories])
+  const activeCategories = visibleCategories.filter((category) => !category.isArchived)
   const editCategory = draft ? categoryById.get(draft.categoryId) : undefined
   const categoryOptions = editCategory && editCategory.isArchived ? [editCategory, ...activeCategories] : activeCategories
   const total = useMemo(() => sumCents(expenses.map((expense) => expense.amountCents)), [expenses])
@@ -101,8 +103,9 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
     setBusy(true)
     try {
       const category = await vault.operation<Category>({ kind: 'categories.create', input: { name: parsed.data.name, colorToken: null, isArchived: false } })
-      await onCategoriesRefresh()
+      setOptimisticCategory(category)
       setDraft((current) => current ? { ...current, categoryId: category.id } : current)
+      await onCategoriesRefresh()
       setCategoryName('')
       setNewCategory(false)
       setError('')
@@ -116,14 +119,14 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
   }
 
   return <section className="panel expenses-panel" aria-labelledby="expenses-title">
-    <div className="section-heading"><div><p className="eyebrow">Desembolsos</p><h2 id="expenses-title">Gastos del mes</h2></div><Button className="button button-secondary" type="button" onClick={startCreate}>Nuevo gasto</Button></div>
+    <div className="section-heading"><div><p className="eyebrow">Desembolsos</p><h2 id="expenses-title">Gastos del mes</h2></div><Button className="button button-secondary" type="button" onClick={startCreate} disabled={busy}>Nuevo gasto</Button></div>
     {draft && <form className="inline-form expense-form" onSubmit={submit} noValidate>
-      <label htmlFor="expense-date">Fecha <Input id="expense-date" data-dialog-autofocus type="date" value={draft.spentOn} onChange={(event) => setDraft({ ...draft, spentOn: event.target.value })} /></label>
-      <label htmlFor="expense-category">Categoría <select id="expense-category" value={draft.categoryId} onChange={(event) => setDraft({ ...draft, categoryId: event.target.value })}><option value="" disabled>Elegí una categoría</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}{category.isArchived ? ' (archivada)' : ''}</option>)}</select></label>
+      <label htmlFor="expense-date">Fecha <Input id="expense-date" data-dialog-autofocus type="date" value={draft.spentOn} onChange={(event) => setDraft((current) => current ? { ...current, spentOn: event.target.value } : current)} disabled={busy} /></label>
+      <label htmlFor="expense-category">Categoría <select id="expense-category" value={draft.categoryId} onChange={(event) => setDraft((current) => current ? { ...current, categoryId: event.target.value } : current)} disabled={busy}><option value="" disabled>Elegí una categoría</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}{category.isArchived ? ' (archivada)' : ''}</option>)}</select></label>
       <Button className="button button-small category-inline-trigger" type="button" onClick={() => setNewCategory((current) => !current)} disabled={busy}>{newCategory ? 'Cancelar categoría' : 'Nueva categoría'}</Button>
-      {newCategory && <div className="inline-category-form"><label htmlFor="expense-new-category">Nombre de categoría <Input id="expense-new-category" autoFocus value={categoryName} onChange={(event) => setCategoryName(event.target.value)} /></label><Button className="button button-small button-primary" type="button" onClick={createCategory} loading={busy} disabled={busy}>Crear y usar</Button></div>}
-      <label htmlFor="expense-amount">Monto (ARS) <Input id="expense-amount" inputMode="decimal" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} /></label>
-      <label htmlFor="expense-description">Descripción (opcional) <Input id="expense-description" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
+      {newCategory && <div className="inline-category-form"><label htmlFor="expense-new-category">Nombre de categoría <Input id="expense-new-category" autoFocus value={categoryName} onChange={(event) => setCategoryName(event.target.value)} disabled={busy} /></label><Button className="button button-small button-primary" type="button" onClick={createCategory} loading={busy} disabled={busy}>Crear y usar</Button></div>}
+      <label htmlFor="expense-amount">Monto (ARS) <Input id="expense-amount" inputMode="decimal" value={draft.amount} onChange={(event) => setDraft((current) => current ? { ...current, amount: event.target.value } : current)} disabled={busy} /></label>
+      <label htmlFor="expense-description">Descripción (opcional) <Input id="expense-description" value={draft.description} onChange={(event) => setDraft((current) => current ? { ...current, description: event.target.value } : current)} disabled={busy} /></label>
       <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>Guardar gasto</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>Cancelar</Button></div>
     </form>}
     {error && <p className="form-message error" role="alert">{error}</p>}

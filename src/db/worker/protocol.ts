@@ -8,6 +8,7 @@ export type DomainOperation =
   | { kind: 'months.delete'; id: string }
   | { kind: 'months.createWithDebts'; input: Omit<NewMonthWithDebts, 'createdAt'> }
   | { kind: 'months.createWithTemplates'; input: Omit<NewMonthWithDebts, 'debts' | 'createdAt'>; templateIds: NewTemplateDebt[] }
+  | { kind: 'history.list' }
   | { kind: 'categories.list'; includeArchived?: boolean }
   | { kind: 'categories.get'; id: string }
   | { kind: 'categories.create'; input: Omit<NewCategory, 'createdAt'> }

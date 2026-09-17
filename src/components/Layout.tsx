@@ -19,6 +19,9 @@ function Layout() {
           <NavLink className="nav-link" to="/boveda">
             Bóveda
           </NavLink>
+          <NavLink className="nav-link" to="/boveda/historial">
+            Historial
+          </NavLink>
           <ThemeToggle />
         </nav>
       </header>
@@ -26,7 +29,7 @@ function Layout() {
         <Outlet />
       </main>
       <footer className="site-footer">
-        <span>Moneo · Fase 2</span>
+        <span>Moneo · V1</span>
         <span>Datos locales, bajo tu control</span>
       </footer>
     </div>
