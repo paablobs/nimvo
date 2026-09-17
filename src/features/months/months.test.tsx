@@ -95,7 +95,7 @@ describe('monthly workspace', () => {
     renderInVault(directSession, <VaultHomePage />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Elegir dónde guardar' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Guardar', exact: true })).toBeVisible())
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Guardar$/ })).toBeVisible())
     expect(screen.getByText('Archivo vinculado: finanzas.moneo')).toBeVisible()
     await user.click(screen.getByText('Acciones'))
     const directMenu = screen.getByText('Acciones').closest('details') as HTMLElement
