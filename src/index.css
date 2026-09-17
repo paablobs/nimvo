@@ -489,6 +489,12 @@ h1 {
   font-size: clamp(2rem, 5vw, 4rem);
 }
 
+.file-link-status {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
 .workspace-actions,
 .month-nav,
 .row-actions {

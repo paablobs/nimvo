@@ -39,6 +39,22 @@ function OpenVaultPage() {
     }
   }
 
+  async function chooseWithSystem() {
+    setError('')
+    setBusy(true)
+    try {
+      const opened = await vault.openFromPicker(password)
+      if (opened) navigate('/boveda')
+    } catch (caught) {
+      setError(caught instanceof MoneoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
+        ? UNSUPPORTED_MONEO_VERSION_MESSAGE
+        : INVALID_MONEO_FILE_MESSAGE)
+    } finally {
+      setBusy(false)
+      setPassword('')
+    }
+  }
+
   return (
     <section className="page-section form-section">
       <div className="form-intro">
@@ -48,8 +64,16 @@ function OpenVaultPage() {
           Selecciona una copia de Moneo desde este dispositivo y escribe su
           contraseña. La contraseña no se guarda.
         </p>
+        <p className="local-note">
+          El acceso directo vincula el archivo a esta pestaña cuando el navegador lo permite. En Firefox y otros navegadores se usa la selección manual y la descarga.
+        </p>
       </div>
       <form className="vault-form file-picker" onSubmit={handleSubmit} noValidate>
+        {vault.directFileAccessSupported && (
+          <Button className="button button-secondary" type="button" onClick={chooseWithSystem} loading={busy} disabled={busy}>
+            Elegir con el sistema
+          </Button>
+        )}
         <label htmlFor="vault-file">Archivo de Moneo</label>
         <input
           id="vault-file"

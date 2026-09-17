@@ -5,8 +5,11 @@ export interface VaultContextValue extends VaultSnapshot {
   session: VaultSession
   create: (password: string) => Promise<void>
   open: (bytes: Uint8Array, password: string) => Promise<void>
-  save: () => Promise<{ filename: string; exportedAt: Date }>
-  export: () => Promise<{ filename: string; exportedAt: Date }>
+  openFromPicker: (password: string) => Promise<boolean>
+  save: () => Promise<{ filename: string; exportedAt: Date } | null>
+  saveAs: () => Promise<{ filename: string; exportedAt: Date } | null>
+  saveCopy: () => Promise<{ filename: string; exportedAt: Date }>
+  export: () => Promise<{ filename: string; exportedAt: Date } | null>
   lock: () => Promise<void>
   operation: VaultSession['operation']
 }

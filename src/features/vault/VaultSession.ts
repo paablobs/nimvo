@@ -8,6 +8,13 @@ import {
   MoneoCryptoError,
   UNSUPPORTED_MONEO_VERSION_MESSAGE,
 } from '../../crypto/index.ts'
+import {
+  isAbortError,
+  VaultFileAccess,
+  type VaultFileAccessLike,
+  type VaultFileHandle,
+  type VaultFileSelection,
+} from './VaultFileAccess.ts'
 
 export type VaultStatus = 'locked' | 'opening' | 'unlocked' | 'error'
 
@@ -16,6 +23,8 @@ export interface VaultSnapshot {
   dirty: boolean
   lastExportAt: Date | null
   error: string | null
+  activeFileName: string | null
+  directFileAccessSupported: boolean
 }
 
 export interface DatabaseClientLike {
@@ -35,6 +44,7 @@ export interface VaultSessionOptions {
   encrypt?: typeof encryptSqliteBytes
   download?: (blob: Blob, filename: string) => void | Promise<void>
   now?: () => Date
+  fileAccess?: VaultFileAccessLike
 }
 
 type Listener = () => void
@@ -50,11 +60,13 @@ const mutationKinds = new Set([
   'expenses.create', 'expenses.update', 'expenses.delete',
 ])
 
-const initialSnapshot = (): VaultSnapshot => ({
+const initialSnapshot = (directFileAccessSupported = false): VaultSnapshot => ({
   status: 'locked',
   dirty: false,
   lastExportAt: null,
   error: null,
+  activeFileName: null,
+  directFileAccessSupported,
 })
 
 const pad = (value: number): string => String(value).padStart(2, '0')
@@ -80,9 +92,11 @@ const closeQuietly = async (client: DatabaseClientLike | undefined): Promise<voi
 /** Owns the in-memory key and worker for one unlocked vault. */
 export class VaultSession {
   private readonly options: Required<Pick<VaultSessionOptions, 'createClient' | 'encrypt' | 'download' | 'now'>>
-  private snapshot: VaultSnapshot = initialSnapshot()
+  private readonly fileAccess: VaultFileAccessLike
+  private snapshot: VaultSnapshot
   private client: DatabaseClientLike | undefined
   private passwordKey: CryptoKey | undefined
+  private activeTarget: VaultFileHandle | undefined
   private queue: Promise<unknown> = Promise.resolve()
   private readonly listeners = new Set<Listener>()
 
@@ -93,6 +107,8 @@ export class VaultSession {
       download: options.download ?? browserDownload,
       now: options.now ?? (() => new Date()),
     }
+    this.fileAccess = options.fileAccess ?? new VaultFileAccess()
+    this.snapshot = initialSnapshot(this.fileAccess.directFileAccessSupported)
   }
 
   getSnapshot = (): VaultSnapshot => this.snapshot
@@ -137,7 +153,8 @@ export class VaultSession {
         this.passwordKey = key
         candidate = undefined
         key = undefined
-        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null })
+        this.activeTarget = undefined
+        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null })
       } catch (error) {
         await closeQuietly(candidate)
         this.client = previousClient
@@ -150,11 +167,11 @@ export class VaultSession {
     })
   }
 
-  async open(bytes: Uint8Array, password: string): Promise<void> {
-    return this.enqueue(async () => {
+  private async openBytes(bytes: Uint8Array, password: string, selection: VaultFileSelection | null): Promise<void> {
       const previousSnapshot = this.snapshot
       const previousClient = this.client
       const previousKey = this.passwordKey
+      const previousTarget = this.activeTarget
       this.setSnapshot({ status: 'opening', error: null })
       const container = new Uint8Array(bytes)
       let plaintext: Uint8Array | undefined
@@ -173,11 +190,19 @@ export class VaultSession {
         this.passwordKey = key
         candidate = undefined
         key = undefined
-        this.setSnapshot({ status: 'unlocked', dirty: false, lastExportAt: null, error: null })
+        this.activeTarget = selection?.target
+        this.setSnapshot({
+          status: 'unlocked',
+          dirty: false,
+          lastExportAt: null,
+          error: null,
+          activeFileName: selection?.name ?? null,
+        })
       } catch (error) {
         await closeQuietly(candidate)
         this.client = previousClient
         this.passwordKey = previousKey
+        this.activeTarget = previousTarget
         const errorMessage = error instanceof MoneoCryptoError && error.code === 'UNSUPPORTED_VERSION'
           ? UNSUPPORTED_MONEO_VERSION_MESSAGE
           : INVALID_MONEO_FILE_MESSAGE
@@ -189,6 +214,37 @@ export class VaultSession {
         container.fill(0)
         plaintext?.fill(0)
         key = undefined
+      }
+  }
+
+  async open(bytes: Uint8Array, password: string): Promise<void> {
+    return this.enqueue(() => this.openBytes(bytes, password, null))
+  }
+
+  /** Opens through the system picker. A selected handle is committed atomically with the vault. */
+  async openFromPicker(password: string): Promise<boolean> {
+    let selectionPromise: Promise<VaultFileSelection | null>
+    try {
+      // Invoke the picker before enqueueing anything: browsers require the
+      // transient user activation to still be present at this point.
+      selectionPromise = this.fileAccess.open()
+    } catch (error) {
+      selectionPromise = Promise.reject(error)
+    }
+    return this.enqueue(async () => {
+      let selection: VaultFileSelection | null
+      try {
+        selection = await selectionPromise
+      } catch (error) {
+        if (isAbortError(error)) return false
+        throw error
+      }
+      if (!selection) return false
+      try {
+        await this.openBytes(selection.bytes, password, selection)
+        return true
+      } finally {
+        selection.bytes.fill(0)
       }
     })
   }
@@ -202,40 +258,145 @@ export class VaultSession {
     })
   }
 
-  async save(): Promise<SaveResult> {
-    return this.enqueue(async () => {
-      const client = this.requireClient()
-      const key = this.passwordKey
-      if (!key) throw new Error('La bóveda está bloqueada.')
-      const exported = await client.export()
-      const exportedAt = this.options.now()
-      let encrypted: Uint8Array | undefined
+  private async exportEncrypted(): Promise<{ bytes: Uint8Array; exportedAt: Date }> {
+    const client = this.requireClient()
+    const key = this.passwordKey
+    if (!key) throw new Error('La bóveda está bloqueada.')
+    const exported = await client.export()
+    try {
+      return { bytes: await this.options.encrypt(exported, key), exportedAt: this.options.now() }
+    } finally {
+      exported.fill(0)
+    }
+  }
+
+  private async saveDownload(): Promise<SaveResult> {
+    const { bytes, exportedAt } = await this.exportEncrypted()
+    const filename = filenameFor(exportedAt)
+    try {
+      const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' })
+      await this.options.download(blob, filename)
+      this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null })
+      return { filename, exportedAt }
+    } catch (error) {
+      this.setSnapshot({ error: 'No se pudo guardar la copia.' })
+      throw error
+    } finally {
+      bytes.fill(0)
+    }
+  }
+
+  async saveToFile(): Promise<SaveResult | null> {
+    const targetAtInvocation = this.activeTarget
+    let pickerPromise: Promise<ReturnType<VaultFileAccessLike['saveAs']> extends Promise<infer T> ? T : never> | undefined
+    if (!targetAtInvocation && this.fileAccess.directFileAccessSupported) {
       try {
-        encrypted = await this.options.encrypt(exported, key)
-        const blob = new Blob([encrypted.buffer as ArrayBuffer], { type: 'application/octet-stream' })
-        const filename = filenameFor(exportedAt)
-        await this.options.download(blob, filename)
-        this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null })
-        return { filename, exportedAt }
+        // As with opening, request the destination while the click activation
+        // is live. Exporting and encryption wait inside the session queue.
+        pickerPromise = this.fileAccess.saveAs(filenameFor(this.options.now()))
       } catch (error) {
+        pickerPromise = Promise.reject(error)
+      }
+    }
+    return this.enqueue(async () => {
+      let pickerSelection: Awaited<typeof pickerPromise>
+      if (pickerPromise) {
+        try {
+          pickerSelection = await pickerPromise
+        } catch (error) {
+          if (isAbortError(error)) return null
+          this.setSnapshot({ error: 'No se pudo guardar la copia.' })
+          throw error
+        }
+        if (!pickerSelection) return null
+      }
+      const { bytes, exportedAt } = await this.exportEncrypted()
+      const suggestedName = filenameFor(exportedAt)
+      let selectedTarget: VaultFileHandle | undefined
+      let selectedName = suggestedName
+      try {
+        if (targetAtInvocation) {
+          await this.fileAccess.write(targetAtInvocation, bytes)
+          selectedTarget = targetAtInvocation
+          selectedName = this.snapshot.activeFileName ?? suggestedName
+        } else if (pickerSelection) {
+          await this.fileAccess.write(pickerSelection.target, bytes)
+          selectedTarget = pickerSelection.target
+          selectedName = pickerSelection.name
+        } else {
+          const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' })
+          await this.options.download(blob, suggestedName)
+        }
+        this.activeTarget = selectedTarget
+        this.setSnapshot({ activeFileName: selectedTarget ? selectedName : null, dirty: false, lastExportAt: exportedAt, error: null })
+        return { filename: selectedTarget ? selectedName : suggestedName, exportedAt }
+      } catch (error) {
+        if (isAbortError(error)) return null
         this.setSnapshot({ error: 'No se pudo guardar la copia.' })
         throw error
       } finally {
-        exported.fill(0)
-        encrypted?.fill(0)
+        bytes.fill(0)
       }
     })
   }
 
-  export(): Promise<SaveResult> { return this.save() }
+  async saveAs(): Promise<SaveResult | null> {
+    let pickerPromise: ReturnType<VaultFileAccessLike['saveAs']>
+    if (this.fileAccess.directFileAccessSupported) {
+      try {
+        // Keep this call synchronous with the user action for browser picker activation.
+        pickerPromise = this.fileAccess.saveAs(filenameFor(this.options.now()))
+      } catch (error) {
+        pickerPromise = Promise.reject(error)
+      }
+    } else {
+      pickerPromise = Promise.resolve(null)
+    }
+    return this.enqueue(async () => {
+      if (!this.fileAccess.directFileAccessSupported) return this.saveDownload()
+      let selection: Awaited<typeof pickerPromise>
+      try {
+        selection = await pickerPromise
+      } catch (error) {
+        if (isAbortError(error)) return null
+        this.setSnapshot({ error: 'No se pudo guardar la copia.' })
+        throw error
+      }
+      if (!selection) return null
+      const { bytes, exportedAt } = await this.exportEncrypted()
+      try {
+        await this.fileAccess.write(selection.target, bytes)
+        this.activeTarget = selection.target
+        this.setSnapshot({ activeFileName: selection.name, dirty: false, lastExportAt: exportedAt, error: null })
+        return { filename: selection.name, exportedAt }
+      } catch (error) {
+        if (isAbortError(error)) return null
+        this.setSnapshot({ error: 'No se pudo guardar la copia.' })
+        throw error
+      } finally {
+        bytes.fill(0)
+      }
+    })
+  }
+
+  async saveCopy(): Promise<SaveResult> {
+    return this.enqueue(async () => this.saveDownload())
+  }
+
+  async save(): Promise<SaveResult | null> {
+    return this.saveToFile()
+  }
+
+  export(): Promise<SaveResult | null> { return this.saveToFile() }
 
   async lock(): Promise<void> {
     return this.enqueue(async () => {
       const client = this.client
       this.client = undefined
       this.passwordKey = undefined
+      this.activeTarget = undefined
       await closeQuietly(client)
-      this.setSnapshot({ ...initialSnapshot() })
+      this.setSnapshot({ ...initialSnapshot(this.fileAccess.directFileAccessSupported) })
     })
   }
 

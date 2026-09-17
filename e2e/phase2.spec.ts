@@ -7,6 +7,7 @@ async function createCopy(page: Page, testInfo: TestInfo) {
   await page.getByLabel('Confirmar contraseña').fill('phase2-password')
   await page.getByRole('button', { name: 'Crear bóveda' }).click()
   await expect(page.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
+  await page.locator('summary', { hasText: 'Acciones' }).click()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Guardar copia' }).click(),
@@ -21,7 +22,7 @@ async function createCopy(page: Page, testInfo: TestInfo) {
 
 test('crea, descarga, bloquea y vuelve a abrir la misma bóveda', async ({ page }, testInfo) => {
   const copy = await createCopy(page, testInfo)
-  await page.getByRole('button', { name: 'Bloquear' }).click()
+  await page.getByRole('button', { name: 'Bloquear' }).first().click()
   await expect(page).toHaveURL(/\/$/)
 
   await page.goto('/abrir')
@@ -33,7 +34,7 @@ test('crea, descarga, bloquea y vuelve a abrir la misma bóveda', async ({ page 
 
 test('rechaza contraseña incorrecta y bytes alterados', async ({ page }, testInfo) => {
   const copy = await createCopy(page, testInfo)
-  await page.getByRole('button', { name: 'Bloquear' }).click()
+  await page.getByRole('button', { name: 'Bloquear' }).first().click()
   await page.goto('/abrir')
   await page.locator('#vault-file').setInputFiles(copy)
   await page.getByLabel('Contraseña').fill('incorrecta')

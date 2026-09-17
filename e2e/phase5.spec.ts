@@ -90,6 +90,7 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
   try {
     await createVault(chromiumPage)
     await createMonth(chromiumPage, '9', '100000')
+    await chromiumPage.locator('summary', { hasText: 'Acciones' }).click()
     const firstDownload = chromiumPage.waitForEvent('download')
     await chromiumPage.getByRole('button', { name: 'Guardar copia' }).click()
     const chromiumFile = testInfo.outputPath('phase5-chromium.moneo')
@@ -108,6 +109,7 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
     await expect(firefoxHistory.getByRole('row').nth(1)).toContainText('100.000,00')
     await firefoxPage.getByRole('link', { name: 'Volver al mes', exact: true }).first().click()
     await expect(firefoxPage.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
+    await firefoxPage.locator('summary', { hasText: 'Acciones' }).click()
     const secondDownload = firefoxPage.waitForEvent('download')
     await firefoxPage.getByRole('button', { name: 'Guardar copia' }).click()
     const firefoxFile = testInfo.outputPath('phase5-firefox.moneo')
