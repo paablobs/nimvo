@@ -51,6 +51,38 @@ describe('monthly workspace', () => {
     expect(dueDate).toHaveValue(`${year}-02-28`)
   })
 
+  it('keeps the dialog open and explains when the month already exists', async () => {
+    const operation = vi.fn(() => ({ month, debts: [] }))
+    const session = new VaultSession({ createClient: () => makeClient(operation) })
+    await session.create('test-password')
+    const onClose = vi.fn()
+    const onCreated = vi.fn(async () => undefined)
+    renderInVault(session, <MonthCreationDialog existingMonths={[month]} templates={[]} onClose={onClose} onCreated={onCreated} />)
+    const user = userEvent.setup()
+    await user.clear(screen.getByLabelText('Año'))
+    await user.type(screen.getByLabelText('Año'), String(month.year))
+    await user.clear(screen.getByLabelText('Mes'))
+    await user.type(screen.getByLabelText('Mes'), String(month.month))
+    await user.click(screen.getByRole('button', { name: 'Crear mes' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Ese mes ya está creado.')
+    expect(operation).not.toHaveBeenCalled()
+    expect(onCreated).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('rejects amounts above 999999999', async () => {
+    const operation = vi.fn(() => ({ month, debts: [] }))
+    const session = new VaultSession({ createClient: () => makeClient(operation) })
+    await session.create('test-password')
+    renderInVault(session, <MonthCreationDialog templates={[]} onClose={vi.fn()} onCreated={vi.fn(async () => undefined)} />)
+    const user = userEvent.setup()
+    await user.clear(screen.getByLabelText('Monto inicial (ARS)'))
+    await user.type(screen.getByLabelText('Monto inicial (ARS)'), '1000000000')
+    await user.click(screen.getByRole('button', { name: 'Crear mes' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Indica un año, mes e importe inicial válidos.')
+    expect(operation).not.toHaveBeenCalled()
+  })
+
   it('calculates summary and refreshes it when a debt is paid', async () => {
     let debt: Debt = { id: 'debt-1', monthId: month.id, templateId: null, concept: 'Alquiler', amountCents: 25000, dueDate: null, paidAt: null, createdAt: month.createdAt, updatedAt: month.updatedAt }
     const session = new VaultSession({ createClient: () => makeClient((operation) => {
