@@ -19,10 +19,10 @@ async function createCopy(page: Page, testInfo: TestInfo) {
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Descargar copia' }).click(),
   ])
-  expect(download.suggestedFilename()).toMatch(/^moneo-\d{4}-\d{2}-\d{2}-\d{4}\.moneo$/)
+  expect(download.suggestedFilename()).toMatch(/^nimvo-\d{4}-\d{2}-\d{2}-\d{4}\.nimvo$/)
   const path = await download.path()
   if (!path) throw new Error('No se obtuvo la descarga de prueba')
-  const copy = testInfo.outputPath('phase2-copy.moneo')
+  const copy = testInfo.outputPath('phase2-copy.nimvo')
   await writeFile(copy, await readFile(path))
   return copy
 }
@@ -48,7 +48,7 @@ test('rechaza contraseña incorrecta y bytes alterados', async ({ page }, testIn
   await page.getByRole('button', { name: 'Abrir bóveda' }).click()
   await expect(page.getByRole('alert')).toHaveText('Contraseña incorrecta o archivo dañado')
 
-  const altered = testInfo.outputPath('phase2-altered.moneo')
+  const altered = testInfo.outputPath('phase2-altered.nimvo')
   const bytes = await readFile(copy)
   bytes[bytes.length - 1] ^= 1
   await writeFile(altered, bytes)

@@ -18,23 +18,29 @@ function handle(name: string, bytes = new Uint8Array([1, 2])): VaultFileHandle {
 
 describe('VaultFileAccess', () => {
   it('detects secure picker support and returns the selected bytes and target', async () => {
-    const target = handle('datos.moneo')
+    const target = handle('datos.nimvo')
     const picker = {
       isSecureContext: true,
       showOpenFilePicker: vi.fn(async () => [target]),
       showSaveFilePicker: vi.fn(async () => target),
     }
     const access = new VaultFileAccess(picker)
-    await expect(access.open()).resolves.toMatchObject({ name: 'datos.moneo', target })
+    await expect(access.open()).resolves.toMatchObject({ name: 'datos.nimvo', target })
     expect(access.directFileAccessSupported).toBe(true)
-    await expect(access.saveAs('nuevo.moneo')).resolves.toMatchObject({ name: 'datos.moneo', target })
+    await expect(access.saveAs('nuevo.nimvo')).resolves.toMatchObject({ name: 'datos.nimvo', target })
+    expect(picker.showOpenFilePicker).toHaveBeenCalledWith(expect.objectContaining({
+      types: [{ description: 'Archivo Nimvo', accept: { 'application/octet-stream': ['.nimvo', '.moneo'] } }],
+    }))
+    expect(picker.showSaveFilePicker).toHaveBeenCalledWith(expect.objectContaining({
+      types: [{ description: 'Archivo Nimvo', accept: { 'application/octet-stream': ['.nimvo'] } }],
+    }))
   })
 
   it('treats picker cancellation as no-op and aborts a failed write best effort', async () => {
     const abort = vi.fn(async () => undefined)
     const write = vi.fn(async () => { throw new Error('disk full') })
     const target = {
-      ...handle('datos.moneo'),
+      ...handle('datos.nimvo'),
       createWritable: vi.fn(async () => ({ write, close: vi.fn(async () => undefined), abort })),
     }
     const picker = {
@@ -44,7 +50,7 @@ describe('VaultFileAccess', () => {
     }
     const access = new VaultFileAccess(picker)
     await expect(access.open()).resolves.toBeNull()
-    await expect(access.saveAs('nuevo.moneo')).resolves.toBeNull()
+    await expect(access.saveAs('nuevo.nimvo')).resolves.toBeNull()
 
     await expect(access.write(target, new Uint8Array([3]))).rejects.toThrow('disk full')
     expect(write).toHaveBeenCalledOnce()

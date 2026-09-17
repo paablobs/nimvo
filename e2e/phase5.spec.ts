@@ -100,7 +100,7 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
     await createMonth(chromiumPage, '9', '100000')
     const firstDownload = chromiumPage.waitForEvent('download')
     await chromiumPage.getByRole('button', { name: 'Descargar copia' }).click()
-    const chromiumFile = testInfo.outputPath('phase5-chromium.moneo')
+    const chromiumFile = testInfo.outputPath('phase5-chromium.nimvo')
     await (await firstDownload).saveAs(chromiumFile)
 
     const firefoxContext = await firefoxBrowser.newContext({ baseURL })
@@ -119,7 +119,7 @@ test('interopera exportaciones entre Chromium y Firefox', async ({ page }, testI
     await expect(firefoxPage.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
     const secondDownload = firefoxPage.waitForEvent('download')
     await firefoxPage.getByRole('button', { name: 'Descargar copia' }).click()
-    const firefoxFile = testInfo.outputPath('phase5-firefox.moneo')
+    const firefoxFile = testInfo.outputPath('phase5-firefox.nimvo')
     await (await secondDownload).saveAs(firefoxFile)
 
     const secondChromiumContext = await chromiumBrowser.newContext({ baseURL })

@@ -81,7 +81,7 @@ describe('monthly workspace', () => {
       return undefined
     }
     const target: VaultFileHandle = {
-      name: 'finanzas.moneo',
+      name: 'finanzas.nimvo',
       getFile: vi.fn(async () => new Blob()),
       createWritable: vi.fn(async () => ({
         write: vi.fn(async () => undefined),
@@ -89,14 +89,14 @@ describe('monthly workspace', () => {
       })),
     }
     const fileAccess = makeFileAccess(true)
-    vi.mocked(fileAccess.saveAs).mockResolvedValue({ name: 'finanzas.moneo', target })
+    vi.mocked(fileAccess.saveAs).mockResolvedValue({ name: 'finanzas.nimvo', target })
     const directSession = new VaultSession({ createClient: () => makeClient(operation), fileAccess })
     await directSession.create('test-password')
     renderInVault(directSession, <VaultHomePage />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Elegir dónde guardar' }))
     await waitFor(() => expect(screen.getByRole('button', { name: /^Guardar$/ })).toBeVisible())
-    expect(screen.getByText('Archivo vinculado: finanzas.moneo')).toBeVisible()
+    expect(screen.getByText('Archivo vinculado: finanzas.nimvo')).toBeVisible()
     await user.click(screen.getByText('Acciones'))
     const directMenu = screen.getByText('Acciones').closest('details') as HTMLElement
     expect(within(directMenu).getByRole('button', { name: 'Guardar como…' })).toBeVisible()

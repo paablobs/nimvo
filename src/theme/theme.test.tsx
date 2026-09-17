@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
-import { getInitialTheme, THEME_STORAGE_KEY, useTheme } from './theme.ts'
+import { getInitialTheme, LEGACY_THEME_STORAGE_KEY, THEME_STORAGE_KEY, useTheme } from './theme.ts'
 
 function ThemeProbe() {
   const { mode, toggle } = useTheme()
@@ -31,6 +31,12 @@ describe('theme preference', () => {
     })
 
     expect(getInitialTheme()).toBe('dark')
+  })
+
+  it('migrates the legacy theme key to Nimvo storage', () => {
+    window.localStorage.setItem(LEGACY_THEME_STORAGE_KEY, 'dark')
+    expect(getInitialTheme()).toBe('dark')
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
   })
 
   it('does not save the system preference on first load', () => {

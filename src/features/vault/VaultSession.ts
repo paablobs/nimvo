@@ -1,12 +1,12 @@
 import { createDatabaseClient, type DatabaseClient } from '../../db/index.ts'
 import type { DomainOperation } from '../../db/worker/protocol.ts'
 import {
-  decryptMoneoFile,
+  decryptNimvoFile,
   encryptSqliteBytes,
   importPasswordKey,
-  INVALID_MONEO_FILE_MESSAGE,
-  MoneoCryptoError,
-  UNSUPPORTED_MONEO_VERSION_MESSAGE,
+  INVALID_NIMVO_FILE_MESSAGE,
+  NimvoCryptoError,
+  UNSUPPORTED_NIMVO_VERSION_MESSAGE,
 } from '../../crypto/index.ts'
 import {
   isAbortError,
@@ -72,7 +72,7 @@ const initialSnapshot = (directFileAccessSupported = false): VaultSnapshot => ({
 const pad = (value: number): string => String(value).padStart(2, '0')
 
 const filenameFor = (date: Date): string =>
-  `moneo-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}.moneo`
+  `nimvo-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}.nimvo`
 
 const browserDownload = (blob: Blob, filename: string): void => {
   if (typeof document === 'undefined' || !URL.createObjectURL) throw new Error('Descarga no disponible')
@@ -179,7 +179,7 @@ export class VaultSession {
       let candidate: DatabaseClientLike | undefined
       try {
         // Authentication happens before constructing or opening a worker.
-        const decrypted = await decryptMoneoFile(container, password)
+        const decrypted = await decryptNimvoFile(container, password)
         plaintext = decrypted.plaintext
         key = decrypted.passwordKey
         candidate = this.options.createClient()
@@ -190,22 +190,24 @@ export class VaultSession {
         this.passwordKey = key
         candidate = undefined
         key = undefined
-        this.activeTarget = selection?.target
+        // Legacy-format files are read-only imports. Never keep their picker
+        // handle, otherwise a later save could overwrite the old format.
+        this.activeTarget = selection && decrypted.metadata.format === 'nimvo' ? selection.target : undefined
         this.setSnapshot({
           status: 'unlocked',
           dirty: false,
           lastExportAt: null,
           error: null,
-          activeFileName: selection?.name ?? null,
+          activeFileName: selection && decrypted.metadata.format === 'nimvo' ? selection.name : null,
         })
       } catch (error) {
         await closeQuietly(candidate)
         this.client = previousClient
         this.passwordKey = previousKey
         this.activeTarget = previousTarget
-        const errorMessage = error instanceof MoneoCryptoError && error.code === 'UNSUPPORTED_VERSION'
-          ? UNSUPPORTED_MONEO_VERSION_MESSAGE
-          : INVALID_MONEO_FILE_MESSAGE
+        const errorMessage = error instanceof NimvoCryptoError && error.code === 'UNSUPPORTED_VERSION'
+          ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
+          : INVALID_NIMVO_FILE_MESSAGE
         this.setSnapshot(previousSnapshot.status === 'unlocked'
           ? previousSnapshot
           : { ...previousSnapshot, status: 'error', dirty: false, error: errorMessage })

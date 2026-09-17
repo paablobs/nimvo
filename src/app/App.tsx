@@ -13,12 +13,12 @@ function NotFoundPage() {
     <section className="page-section compact-section">
       <p className="eyebrow">404</p>
       <h1>Página no encontrada</h1>
-      <p>Esta ruta no forma parte de la primera versión de Moneo.</p>
+      <p>Esta ruta no forma parte de la primera versión de Nimvo.</p>
     </section>
   )
 }
 
-function MoneoApp() {
+function NimvoApp() {
   return (
     <VaultProvider>
       <BrowserRouter>
@@ -37,4 +37,4 @@ function MoneoApp() {
   )
 }
 
-export default MoneoApp
+export default NimvoApp

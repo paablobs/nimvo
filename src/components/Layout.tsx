@@ -6,8 +6,8 @@ function Layout() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <Link className="wordmark" to="/" aria-label="Moneo, inicio">
-          moneo
+        <Link className="wordmark" to="/" aria-label="Nimvo, inicio">
+          nimvo
         </Link>
         <nav aria-label="Navegación principal">
           <NavLink className="nav-link" to="/crear">
@@ -29,7 +29,7 @@ function Layout() {
         <Outlet />
       </main>
       <footer className="site-footer">
-        <span>Moneo · V1</span>
+        <span>Nimvo · V1</span>
         <span>Datos locales, bajo tu control</span>
       </footer>
     </div>

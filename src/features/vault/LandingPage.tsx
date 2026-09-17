@@ -4,10 +4,10 @@ function LandingPage() {
   return (
     <section className="landing page-section">
       <div className="landing-copy">
-        <p className="eyebrow">Moneo / archivo local</p>
+      <p className="eyebrow">Nimvo / archivo local</p>
         <h1>Tu dinero, en una hoja clara.</h1>
         <p className="lede">
-          Moneo es una herramienta de finanzas personales que empieza por lo
+          Nimvo es una herramienta de finanzas personales que empieza por lo
           esencial: un archivo que vive en tu dispositivo.
         </p>
         <div className="action-row">
@@ -25,7 +25,7 @@ function LandingPage() {
       </div>
       <aside className="landing-aside" aria-label="Estado de la versión">
         <span className="aside-label">Versión actual</span>
-        <strong>Moneo V1</strong>
+        <strong>Nimvo V1</strong>
         <p>Registra meses, deudas y gastos, y conserva tu historial en un archivo local cifrado.</p>
       </aside>
     </section>

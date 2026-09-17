@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react'
 
 export type ThemeMode = 'light' | 'dark'
 
-export const THEME_STORAGE_KEY = 'moneo-theme'
+export const THEME_STORAGE_KEY = 'nimvo-theme'
+export const LEGACY_THEME_STORAGE_KEY = 'moneo-theme'
 
 function readStoredTheme(): ThemeMode | null {
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return stored === 'light' || stored === 'dark' ? stored : null
+    if (stored === 'light' || stored === 'dark') return stored
+    const legacy = window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY)
+    if (legacy === 'light' || legacy === 'dark') {
+      window.localStorage.setItem(THEME_STORAGE_KEY, legacy)
+      return legacy
+    }
+    return null
   } catch {
     return null
   }

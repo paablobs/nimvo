@@ -7,7 +7,7 @@ test('landing page offers the current file actions', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Crear archivo' }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: 'Abrir archivo' }).first()).toBeVisible()
   await expect(page.getByText('guardarán localmente')).toBeVisible()
-  await expect(page.getByText('Moneo V1')).toBeVisible()
+  await expect(page.getByText('Nimvo V1')).toBeVisible()
   await expect(page.getByText('Fase 2')).toHaveCount(0)
 })
 

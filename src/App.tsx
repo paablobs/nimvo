@@ -1,3 +1,3 @@
-import MoneoApp from './app/App.tsx'
+import NimvoApp from './app/App.tsx'
 
-export default MoneoApp
+export default NimvoApp

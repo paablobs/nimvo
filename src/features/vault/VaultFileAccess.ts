@@ -64,14 +64,14 @@ export class VaultFileAccess implements VaultFileAccessLike {
     try {
       const [target] = await this.pickerWindow.showOpenFilePicker({
         multiple: false,
-        types: [{ description: 'Archivo Moneo', accept: { 'application/octet-stream': ['.moneo'] } }],
+        types: [{ description: 'Archivo Nimvo', accept: { 'application/octet-stream': ['.nimvo', '.moneo'] } }],
         excludeAcceptAllOption: false,
       })
       if (!target) return null
       const file = await target.getFile()
       return {
         bytes: new Uint8Array(await file.arrayBuffer()),
-        name: target.name ?? file.name ?? 'archivo.moneo',
+        name: target.name ?? file.name ?? 'archivo.nimvo',
         target,
       }
     } catch (error) {
@@ -85,8 +85,8 @@ export class VaultFileAccess implements VaultFileAccessLike {
     try {
       const target = await this.pickerWindow.showSaveFilePicker({
         suggestedName,
-        types: [{ description: 'Archivo Moneo', accept: { 'application/octet-stream': ['.moneo'] } }],
-        excludeAcceptAllOption: false,
+        types: [{ description: 'Archivo Nimvo', accept: { 'application/octet-stream': ['.nimvo'] } }],
+        excludeAcceptAllOption: true,
       })
       return { name: target.name ?? suggestedName, target }
     } catch (error) {

@@ -3,9 +3,9 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useVaultSession } from './useVaultSession.ts'
 import {
-  INVALID_MONEO_FILE_MESSAGE,
-  MoneoCryptoError,
-  UNSUPPORTED_MONEO_VERSION_MESSAGE,
+  INVALID_NIMVO_FILE_MESSAGE,
+  NimvoCryptoError,
+  UNSUPPORTED_NIMVO_VERSION_MESSAGE,
 } from '../../crypto/index.ts'
 
 function OpenVaultPage() {
@@ -20,7 +20,7 @@ function OpenVaultPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!file) {
-      setError('Selecciona un archivo .moneo.')
+      setError('Selecciona un archivo .nimvo o .moneo.')
       return
     }
     setError('')
@@ -30,9 +30,9 @@ function OpenVaultPage() {
       await vault.open(bytes, password)
       navigate('/boveda')
     } catch (caught) {
-      setError(caught instanceof MoneoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
-        ? UNSUPPORTED_MONEO_VERSION_MESSAGE
-        : INVALID_MONEO_FILE_MESSAGE)
+      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
+        ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
+        : INVALID_NIMVO_FILE_MESSAGE)
     } finally {
       setBusy(false)
       setPassword('')
@@ -46,9 +46,9 @@ function OpenVaultPage() {
       const opened = await vault.openFromPicker(password)
       if (opened) navigate('/boveda')
     } catch (caught) {
-      setError(caught instanceof MoneoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
-        ? UNSUPPORTED_MONEO_VERSION_MESSAGE
-        : INVALID_MONEO_FILE_MESSAGE)
+      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
+        ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
+        : INVALID_NIMVO_FILE_MESSAGE)
     } finally {
       setBusy(false)
       setPassword('')
@@ -61,7 +61,7 @@ function OpenVaultPage() {
         <p className="eyebrow">Abrir archivo</p>
         <h1>Continuar con un archivo local</h1>
         <p>
-          Selecciona una copia de Moneo desde este dispositivo y escribe su
+          Selecciona una copia de Nimvo desde este dispositivo y escribe su
           contraseña. La contraseña no se guarda.
         </p>
         <p className="local-note">
@@ -74,11 +74,11 @@ function OpenVaultPage() {
             Elegir con el sistema
           </Button>
         )}
-        <label htmlFor="vault-file">Archivo de Moneo</label>
+        <label htmlFor="vault-file">Archivo de Nimvo</label>
         <input
           id="vault-file"
           type="file"
-          accept=".moneo"
+          accept=".nimvo,.moneo"
           onChange={(event) => {
             const selected = event.target.files?.[0] ?? null
             setFile(selected)
@@ -97,7 +97,7 @@ function OpenVaultPage() {
           autoComplete="current-password"
           required
         />
-        <p className="field-help">Formato: .moneo.</p>
+        <p className="field-help">Formatos: .nimvo (nuevo) y .moneo (compatibilidad).</p>
         {error && <p className="form-message error" role="alert">{error}</p>}
         <div className="form-actions">
           <Button className="button button-primary" type="submit" loading={busy} disabled={busy}>

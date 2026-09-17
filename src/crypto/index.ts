@@ -1,5 +1,5 @@
 /**
- * Moneo encrypted-file container.
+ * Nimvo encrypted-file container.
  *
  * Binary layout (all integer fields are unsigned big-endian):
  *
@@ -14,14 +14,15 @@
 
 const textEncoder = new TextEncoder()
 
-export const MONEO_MAGIC = 'MONEO'
-export const MONEO_VERSION = 1
-export const MONEO_KDF_ID = 1
-export const MONEO_HASH_ID = 1
-export const MONEO_SALT_LENGTH = 16
-export const MONEO_IV_LENGTH = 12
-export const MONEO_GCM_TAG_LENGTH = 16
-export const MONEO_HEADER_LENGTH = 18
+export const NIMVO_MAGIC = 'NIMVO'
+export const LEGACY_MONEO_MAGIC = 'MONEO'
+export const NIMVO_VERSION = 1
+export const NIMVO_KDF_ID = 1
+export const NIMVO_HASH_ID = 1
+export const NIMVO_SALT_LENGTH = 16
+export const NIMVO_IV_LENGTH = 12
+export const NIMVO_GCM_TAG_LENGTH = 16
+export const NIMVO_HEADER_LENGTH = 18
 
 // Measured on the reference environment on 2026-09-17: about 247 ms in
 // Chromium and 330 ms in Firefox. The value is stored in every v1 header.
@@ -32,17 +33,17 @@ export const MAX_PBKDF2_ITERATIONS = 2_000_000
 // Avoid allocating attacker-controlled amounts of memory while parsing.
 export const MAX_CIPHERTEXT_LENGTH = 128 * 1024 * 1024
 
-export const INVALID_MONEO_FILE_MESSAGE = 'Contraseña incorrecta o archivo dañado'
-export const UNSUPPORTED_MONEO_VERSION_MESSAGE = 'Versión de archivo no soportada'
+export const INVALID_NIMVO_FILE_MESSAGE = 'Contraseña incorrecta o archivo dañado'
+export const UNSUPPORTED_NIMVO_VERSION_MESSAGE = 'Versión de archivo no soportada'
 
-export type MoneoErrorCode = 'INVALID_FILE' | 'UNSUPPORTED_VERSION'
+export type NimvoErrorCode = 'INVALID_FILE' | 'UNSUPPORTED_VERSION'
 
-export class MoneoCryptoError extends Error {
-  readonly code: MoneoErrorCode
+export class NimvoCryptoError extends Error {
+  readonly code: NimvoErrorCode
 
-  constructor(code: MoneoErrorCode) {
-    super(code === 'UNSUPPORTED_VERSION' ? UNSUPPORTED_MONEO_VERSION_MESSAGE : INVALID_MONEO_FILE_MESSAGE)
-    this.name = 'MoneoCryptoError'
+  constructor(code: NimvoErrorCode) {
+    super(code === 'UNSUPPORTED_VERSION' ? UNSUPPORTED_NIMVO_VERSION_MESSAGE : INVALID_NIMVO_FILE_MESSAGE)
+    this.name = 'NimvoCryptoError'
     this.code = code
   }
 }
@@ -56,7 +57,10 @@ export interface EncryptOptions {
   rng?: RandomSource
 }
 
-export interface MoneoMetadata {
+export type NimvoFormat = 'nimvo' | 'legacy'
+
+export interface NimvoMetadata {
+  format: NimvoFormat
   version: number
   kdfId: number
   hashId: number
@@ -66,10 +70,10 @@ export interface MoneoMetadata {
   ciphertextLength: number
 }
 
-export interface DecryptedMoneoFile {
+export interface DecryptedNimvoFile {
   plaintext: Uint8Array
   passwordKey: CryptoKey
-  metadata: MoneoMetadata
+  metadata: NimvoMetadata
 }
 
 interface ParsedContainer {
@@ -77,10 +81,10 @@ interface ParsedContainer {
   salt: Uint8Array
   iv: Uint8Array
   ciphertext: Uint8Array
-  metadata: MoneoMetadata
+  metadata: NimvoMetadata
 }
 
-const invalidFile = (): MoneoCryptoError => new MoneoCryptoError('INVALID_FILE')
+const invalidFile = (): NimvoCryptoError => new NimvoCryptoError('INVALID_FILE')
 
 const getCrypto = (): Crypto => {
   const cryptoApi = globalThis.crypto
@@ -233,21 +237,21 @@ const normalizeEncryptOptions = (
 }
 
 const makeHeader = (iterations: number, ciphertextLength: number, salt: Uint8Array, iv: Uint8Array): Uint8Array => {
-  const header = new Uint8Array(MONEO_HEADER_LENGTH + salt.length + iv.length)
-  header.set(textEncoder.encode(MONEO_MAGIC), 0)
-  header[5] = MONEO_VERSION
-  header[6] = MONEO_KDF_ID
-  header[7] = MONEO_HASH_ID
+  const header = new Uint8Array(NIMVO_HEADER_LENGTH + salt.length + iv.length)
+  header.set(textEncoder.encode(NIMVO_MAGIC), 0)
+  header[5] = NIMVO_VERSION
+  header[6] = NIMVO_KDF_ID
+  header[7] = NIMVO_HASH_ID
   writeU32(header, 8, iterations)
   header[12] = salt.length
   header[13] = iv.length
   writeU32(header, 14, ciphertextLength)
-  header.set(salt, MONEO_HEADER_LENGTH)
-  header.set(iv, MONEO_HEADER_LENGTH + salt.length)
+  header.set(salt, NIMVO_HEADER_LENGTH)
+  header.set(iv, NIMVO_HEADER_LENGTH + salt.length)
   return header
 }
 
-/** Encrypt SQLite bytes into a Moneo v1 container. */
+/** Encrypt SQLite bytes into a Nimvo v1 container. */
 export async function encryptSqliteBytes(
   plaintext: Uint8Array | ArrayBuffer,
   passwordKey: CryptoKey,
@@ -258,9 +262,9 @@ export async function encryptSqliteBytes(
   validateIterations(options.iterations)
 
   const plaintextCopy = asBytesCopy(plaintext)
-  const salt = randomBytes(MONEO_SALT_LENGTH, options.rng)
-  const iv = randomBytes(MONEO_IV_LENGTH, options.rng)
-  const ciphertextLength = plaintextCopy.length + MONEO_GCM_TAG_LENGTH
+  const salt = randomBytes(NIMVO_SALT_LENGTH, options.rng)
+  const iv = randomBytes(NIMVO_IV_LENGTH, options.rng)
+  const ciphertextLength = plaintextCopy.length + NIMVO_GCM_TAG_LENGTH
   if (ciphertextLength > MAX_CIPHERTEXT_LENGTH) {
     plaintextCopy.fill(0)
     salt.fill(0)
@@ -296,13 +300,13 @@ export async function encryptSqliteBytes(
 const parseContainer = (container: Uint8Array | ArrayBuffer): ParsedContainer => {
   const bytes = asBytesCopy(container)
   try {
-    if (bytes.length < MONEO_HEADER_LENGTH) throw invalidFile()
+    if (bytes.length < NIMVO_HEADER_LENGTH) throw invalidFile()
 
-    const magic = new TextDecoder().decode(bytes.subarray(0, MONEO_MAGIC.length))
-    if (magic !== MONEO_MAGIC) throw invalidFile()
+    const magic = new TextDecoder().decode(bytes.subarray(0, NIMVO_MAGIC.length))
+    if (magic !== NIMVO_MAGIC && magic !== LEGACY_MONEO_MAGIC) throw invalidFile()
 
     const version = bytes[5]
-    if (version !== MONEO_VERSION) throw new MoneoCryptoError('UNSUPPORTED_VERSION')
+    if (version !== NIMVO_VERSION) throw new NimvoCryptoError('UNSUPPORTED_VERSION')
 
     const kdfId = bytes[6]
     const hashId = bytes[7]
@@ -311,11 +315,11 @@ const parseContainer = (container: Uint8Array | ArrayBuffer): ParsedContainer =>
     const ivLength = bytes[13]
     const ciphertextLength = readU32(bytes, 14)
     if (
-      kdfId !== MONEO_KDF_ID ||
-      hashId !== MONEO_HASH_ID ||
-      saltLength !== MONEO_SALT_LENGTH ||
-      ivLength !== MONEO_IV_LENGTH ||
-      ciphertextLength < MONEO_GCM_TAG_LENGTH ||
+      kdfId !== NIMVO_KDF_ID ||
+      hashId !== NIMVO_HASH_ID ||
+      saltLength !== NIMVO_SALT_LENGTH ||
+      ivLength !== NIMVO_IV_LENGTH ||
+      ciphertextLength < NIMVO_GCM_TAG_LENGTH ||
       ciphertextLength > MAX_CIPHERTEXT_LENGTH ||
       !Number.isInteger(iterations) ||
       iterations < MIN_PBKDF2_ITERATIONS ||
@@ -324,20 +328,20 @@ const parseContainer = (container: Uint8Array | ArrayBuffer): ParsedContainer =>
       throw invalidFile()
     }
 
-    const expectedLength = MONEO_HEADER_LENGTH + saltLength + ivLength + ciphertextLength
+    const expectedLength = NIMVO_HEADER_LENGTH + saltLength + ivLength + ciphertextLength
     if (expectedLength !== bytes.length) throw invalidFile()
 
-    const headerLength = MONEO_HEADER_LENGTH + saltLength + ivLength
+    const headerLength = NIMVO_HEADER_LENGTH + saltLength + ivLength
     const header = bytes.slice(0, headerLength)
-    const salt = bytes.slice(MONEO_HEADER_LENGTH, MONEO_HEADER_LENGTH + saltLength)
-    const iv = bytes.slice(MONEO_HEADER_LENGTH + saltLength, headerLength)
+    const salt = bytes.slice(NIMVO_HEADER_LENGTH, NIMVO_HEADER_LENGTH + saltLength)
+    const iv = bytes.slice(NIMVO_HEADER_LENGTH + saltLength, headerLength)
     const ciphertext = bytes.slice(headerLength)
     return {
       header,
       salt,
       iv,
       ciphertext,
-      metadata: { version, kdfId, hashId, iterations, salt: new Uint8Array(salt), iv: new Uint8Array(iv), ciphertextLength },
+      metadata: { format: magic === NIMVO_MAGIC ? 'nimvo' : 'legacy', version, kdfId, hashId, iterations, salt: new Uint8Array(salt), iv: new Uint8Array(iv), ciphertextLength },
     }
   } finally {
     bytes.fill(0)
@@ -373,11 +377,11 @@ const clearParsed = (parsed: ParsedContainer): void => {
   parsed.metadata.iv.fill(0)
 }
 
-/** Decrypt a Moneo file with an already imported PBKDF2 password key. */
-export async function decryptMoneoFileWithPasswordKey(
+/** Decrypt a Nimvo file with an already imported PBKDF2 password key. */
+export async function decryptNimvoFileWithPasswordKey(
   container: Uint8Array | ArrayBuffer,
   passwordKey: CryptoKey,
-): Promise<{ plaintext: Uint8Array; metadata: MoneoMetadata }> {
+): Promise<{ plaintext: Uint8Array; metadata: NimvoMetadata }> {
   const parsed = parseContainer(container)
   try {
     const plaintext = await decryptParsed(parsed, passwordKey)
@@ -392,18 +396,18 @@ export async function decryptMoneoFileWithPasswordKey(
   }
 }
 
-export const decryptMoneoFileWithKey = decryptMoneoFileWithPasswordKey
+export const decryptNimvoFileWithKey = decryptNimvoFileWithPasswordKey
 
-/** Parse, import the password, authenticate, and decrypt a Moneo file. */
-export async function decryptMoneoFile(
+/** Parse, import the password, authenticate, and decrypt a Nimvo file. */
+export async function decryptNimvoFile(
   container: Uint8Array | ArrayBuffer,
   password: string,
-): Promise<DecryptedMoneoFile> {
+): Promise<DecryptedNimvoFile> {
   const parsed = parseContainer(container)
   try {
     const passwordKey = await importPasswordKey(password)
     const plaintext = await decryptParsed(parsed, passwordKey)
-    const metadata: MoneoMetadata = {
+    const metadata: NimvoMetadata = {
       ...parsed.metadata,
       salt: new Uint8Array(parsed.metadata.salt),
       iv: new Uint8Array(parsed.metadata.iv),

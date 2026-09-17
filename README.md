@@ -1,6 +1,6 @@
-# Moneo
+# Nimvo
 
-Moneo es una aplicación web local para administrar finanzas mensuales como una planilla. Permite registrar meses, deudas y gastos, comparar períodos y guardar todo en un único archivo cifrado `.moneo`.
+Nimvo es una aplicación web local para administrar finanzas mensuales como una planilla. Permite registrar meses, deudas y gastos, comparar períodos y guardar todo en un único archivo cifrado `.nimvo`.
 
 No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejecuta en el navegador y los datos financieros no se guardan en `localStorage` ni se envían por red.
 
@@ -59,12 +59,12 @@ npm run preview
 
 No hay variables de entorno obligatorias.
 
-## Uso del archivo `.moneo`
+## Uso del archivo `.nimvo`
 
 Al iniciar, elegí una de estas opciones:
 
 1. **Crear archivo**: definí una contraseña y abrí una base nueva en memoria.
-2. **Abrir archivo**: seleccioná un `.moneo` existente e ingresá su contraseña.
+2. **Abrir archivo**: seleccioná un `.nimvo` existente e ingresá su contraseña.
 
 Después de modificar datos, el encabezado muestra `Cambios sin guardar`. Guardá antes de cerrar o recargar la pestaña.
 
@@ -81,7 +81,7 @@ El vínculo se conserva solo durante la sesión. Al bloquear la bóveda o cerrar
 
 El botón principal es **Descargar copia**. Para continuar más tarde, abrí la copia más reciente con el selector de archivos. La aplicación no depende de APIs exclusivas de Chromium para leer o exportar datos.
 
-Podés ubicar el `.moneo` en una carpeta que tu sistema operativo sincronice con Drive, Dropbox, OneDrive u otro servicio. Moneo no sincroniza por sí mismo ni resuelve conflictos entre dos copias editadas en paralelo.
+Podés ubicar el `.nimvo` en una carpeta que tu sistema operativo sincronice con Drive, Dropbox, OneDrive u otro servicio. Nimvo no sincroniza por sí mismo ni resuelve conflictos entre dos copias editadas en paralelo.
 
 ## Copias de respaldo
 
@@ -94,7 +94,7 @@ Una contraseña olvidada no se puede recuperar. Sin ella, tampoco se pueden recu
 
 ## Seguridad y formato
 
-`.moneo` no es una base `.sqlite` legible por herramientas externas. Es un contenedor binario versionado con esta estructura:
+`.nimvo` no es una base `.sqlite` legible por herramientas externas. Es un contenedor binario versionado con esta estructura:
 
 ```text
 magic | versión | parámetros KDF | salt | IV | SQLite cifrado + tag
@@ -109,6 +109,8 @@ magic | versión | parámetros KDF | salt | IV | SQLite cifrado + tag
 - Los buffers sensibles se sobrescriben cuando dejan de usarse, dentro de las limitaciones de JavaScript.
 - Un archivo alterado, truncado o abierto con otra contraseña se rechaza sin cargar datos parciales.
 - El tamaño máximo aceptado para un contenedor es 128 MiB.
+
+Las versiones actuales también pueden abrir archivos `.moneo` creados por versiones anteriores. Al abrir uno, Nimvo lo trata como una importación de compatibilidad y la próxima copia se guarda como `.nimvo`; un archivo legado abierto desde el selector no queda vinculado para sobrescritura.
 
 La única preferencia persistida en `localStorage` es el tema visual.
 
