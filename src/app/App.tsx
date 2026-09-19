@@ -7,6 +7,7 @@ import OpenVaultPage from '../features/vault/OpenVaultPage.tsx'
 import VaultHomePage from '../features/vault/VaultHomePage.tsx'
 import HistoryPage from '../features/history/HistoryPage.tsx'
 import { VaultProvider } from '../features/vault/VaultProvider.tsx'
+import SeoMetadata from './SeoMetadata.tsx'
 
 const routerBaseName = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -24,6 +25,7 @@ function NimvoApp() {
   return (
     <VaultProvider>
       <BrowserRouter basename={routerBaseName}>
+        <SeoMetadata />
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<LandingPage />} />

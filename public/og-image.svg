@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f4f1e8"/>
+  <path fill="#ebe7dc" d="M0 505h1200v125H0z"/>
+  <path fill="#165f58" d="M90 94h242l88 88v303a51 51 0 0 1-51 51H90a51 51 0 0 1-51-51V145a51 51 0 0 1 51-51Z"/>
+  <path fill="#8ed1bc" d="M332 94v60a40 40 0 0 0 40 40h48Z"/>
+  <path fill="none" stroke="#f4f1e8" stroke-linecap="round" stroke-linejoin="round" stroke-width="54" d="M142 414V236l166 178V236"/>
+  <text x="510" y="226" fill="#24241f" font-family="monospace" font-size="88" font-weight="700" letter-spacing="-7">nimvo</text>
+  <text x="510" y="312" fill="#165f58" font-family="monospace" font-size="30" font-weight="700" letter-spacing="2">FINANZAS PERSONALES LOCALES</text>
+  <text x="510" y="380" fill="#626057" font-family="monospace" font-size="28">Tus meses, gastos y balances</text>
+  <text x="510" y="424" fill="#626057" font-family="monospace" font-size="28">en un archivo cifrado.</text>
+  <text x="510" y="515" fill="#24241f" font-family="monospace" font-size="22">Sin cuentas · Sin servidores · Bajo tu control</text>
+</svg>

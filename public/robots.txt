@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /nimvo/
+Disallow: /nimvo/crear
+Disallow: /nimvo/abrir
+Disallow: /nimvo/boveda
+
+Sitemap: https://paablobs.github.io/nimvo/sitemap.xml
