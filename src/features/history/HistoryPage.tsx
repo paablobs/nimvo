@@ -63,9 +63,9 @@ function HistoryPage() {
         <caption className="sr-only">Comparación de montos por mes</caption>
         <thead><tr>
           <th scope="col">Mes</th>
-          <th scope="col" className="amount-cell">Monto inicial</th>
-          <th scope="col" className="amount-cell">Deuda total</th>
-          <th scope="col" className="amount-cell">Deuda pendiente</th>
+          <th scope="col" className="amount-cell">Ingresos</th>
+          <th scope="col" className="amount-cell">Gastos fijos totales</th>
+          <th scope="col" className="amount-cell">Gastos fijos pendientes</th>
           <th scope="col" className="amount-cell">Gastos diarios</th>
           <th scope="col" className="amount-cell">Saldo</th>
           <th scope="col"><span className="sr-only">Desglose</span></th>

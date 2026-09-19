@@ -16,7 +16,7 @@ function Layout() {
           <NavLink className="nav-link" to="/abrir">
             Abrir archivo
           </NavLink>
-          <NavLink className="nav-link" to="/boveda">
+          <NavLink className="nav-link" to="/boveda" end>
             Bóveda
           </NavLink>
           <NavLink className="nav-link" to="/boveda/historial">

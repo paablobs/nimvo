@@ -7,6 +7,7 @@ import { adjustDueDayToMonth, isValidCivilDate } from '../../domain/dates.ts'
 import { parseMoneyToCents, formatMoney } from '../../domain/money.ts'
 import { parseSignedMoneyToCents } from './money.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
+import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
 
 export type MonthCreated = { id: string; year: number; month: number }
 
@@ -18,8 +19,15 @@ const monthSchema = z.object({
 type TemplateChoice = { selected: boolean; amount: string; dueDate: string | null; dueDateCustom: boolean }
 
 const MAX_AMOUNT_CENTS = 99_999_999_900
-const MAX_SIGNED_MONEY_LENGTH = 15
-const MAX_MONEY_LENGTH = 14
+
+type ExistingMonth = Pick<Month, 'year' | 'month' | 'initialAmountCents'>
+
+function previousMonthFor(months: ExistingMonth[], year: number, month: number): ExistingMonth | undefined {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || year < 1 || month < 1 || month > 12) return undefined
+  const previousYear = month === 1 ? year - 1 : year
+  const previousNumber = month === 1 ? 12 : month - 1
+  return months.find((existing) => existing.year === previousYear && existing.month === previousNumber)
+}
 
 function dateForTemplate(template: RecurringDebtTemplate, year: number, month: number): string | null {
   if (template.dueDay === null) return null
@@ -34,7 +42,7 @@ function dateForPeriod(date: string, year: number, month: number): string {
 }
 
 interface Props {
-  existingMonths?: Pick<Month, 'year' | 'month'>[]
+  existingMonths?: ExistingMonth[]
   templates: RecurringDebtTemplate[]
   onClose: () => void
   onCreated: (month: MonthCreated) => Promise<void>
@@ -45,7 +53,10 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
   const today = useMemo(() => new Date(), [])
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
-  const [initialAmount, setInitialAmount] = useState('0')
+  const defaultPrevious = previousMonthFor(existingMonths, today.getFullYear(), today.getMonth() + 1)
+  const [incomeMode, setIncomeMode] = useState<'previous' | 'manual'>(defaultPrevious ? 'previous' : 'manual')
+  const [initialAmount, setInitialAmount] = useState(defaultPrevious ? formatMoney(defaultPrevious.initialAmountCents, { symbol: false }) : '0')
+  const previous = useMemo(() => previousMonthFor(existingMonths, year, month), [existingMonths, year, month])
   const [choices, setChoices] = useState<Record<string, TemplateChoice>>(() => Object.fromEntries(
     templates.filter((template) => template.isActive).map((template) => [template.id, {
       selected: true,
@@ -61,6 +72,12 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
     setYear(nextYear)
     setMonth(nextMonth)
     if (!Number.isInteger(nextYear) || nextYear < 1 || nextYear > 9999 || !Number.isInteger(nextMonth) || nextMonth < 1 || nextMonth > 12) return
+    const nextPrevious = previousMonthFor(existingMonths, nextYear, nextMonth)
+    if (!nextPrevious) {
+      setIncomeMode('manual')
+    } else if (incomeMode === 'previous') {
+      setInitialAmount(formatMoney(nextPrevious.initialAmountCents, { symbol: false }))
+    }
     setChoices((current) => Object.fromEntries(templates.filter((template) => template.isActive).map((template) => {
       const previous = current[template.id]
       return [template.id, {
@@ -91,7 +108,7 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
     const parsed = monthSchema.safeParse({ year, month })
     const cents = parseSignedMoneyToCents(initialAmount)
     if (!parsed.success || cents === null || Math.abs(cents) > MAX_AMOUNT_CENTS) {
-      setError('Indica un año, mes e importe inicial válidos.')
+      setError('Indica un año, mes e ingresos válidos.')
       return
     }
     if (existingMonths.some((existing) => existing.year === year && existing.month === month)) {
@@ -143,9 +160,14 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
             <label htmlFor="month-number">Mes</label>
             <Input id="month-number" type="number" min={1} max={12} maxLength={2} value={month} onChange={(event) => changeMonth(event.target.value)} />
           </div>
-          <label htmlFor="month-initial">Monto inicial (ARS)</label>
-          <Input id="month-initial" inputMode="decimal" maxLength={MAX_SIGNED_MONEY_LENGTH} value={initialAmount} onChange={(event) => setInitialAmount(event.target.value.slice(0, MAX_SIGNED_MONEY_LENGTH))} />
-          <p className="field-help">Podés usar 125000,00 o 125.000,00.</p>
+          <fieldset className="income-choice">
+            <legend>Ingresos</legend>
+            {previous && <label><input type="radio" name="income-mode" value="previous" checked={incomeMode === 'previous'} onChange={() => { setIncomeMode('previous'); setInitialAmount(formatMoney(previous.initialAmountCents, { symbol: false })) }} /> Repetir los ingresos del mes anterior ({formatMoney(previous.initialAmountCents)})</label>}
+            <label><input type="radio" name="income-mode" value="manual" checked={incomeMode === 'manual' || previous === undefined} onChange={() => setIncomeMode('manual')} /> Ingresar otro monto manualmente</label>
+            <label htmlFor="month-initial">Ingresos (ARS)</label>
+            <ArsMoneyInput id="month-initial" allowNegative value={initialAmount} disabled={incomeMode === 'previous' && previous !== undefined} onChange={(event) => setInitialAmount(event.target.value)} />
+            <p className="field-help">Podés usar 125000,00 o 125.000,00. Se guardan hasta dos decimales.</p>
+          </fieldset>
           <fieldset className="template-choices">
             <legend>Plantillas activas</legend>
             {templates.filter((template) => template.isActive).length === 0 && <p className="empty-note">No hay plantillas activas.</p>}
@@ -155,7 +177,7 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
                 <div className="template-choice" key={template.id}>
                   <label className="checkbox-label"><input type="checkbox" checked={choice.selected} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, selected: event.target.checked } }))} /> {template.concept}</label>
                   {choice.selected && <div className="template-overrides">
-                    <label>Importe <Input aria-label={`Importe de ${template.concept}`} inputMode="decimal" maxLength={MAX_MONEY_LENGTH} value={choice.amount} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, amount: event.target.value.slice(0, MAX_MONEY_LENGTH) } }))} /></label>
+                    <label>Importe <ArsMoneyInput aria-label={`Importe de ${template.concept}`} value={choice.amount} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, amount: event.target.value } }))} /></label>
                     <label>Vencimiento <Input aria-label={`Vencimiento de ${template.concept}`} type="date" value={choice.dueDate ?? ''} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, dueDate: event.target.value ? dateForPeriod(event.target.value, year, month) : null, dueDateCustom: true } }))} /></label>
                   </div>}
                 </div>

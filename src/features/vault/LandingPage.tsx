@@ -26,7 +26,7 @@ function LandingPage() {
       <aside className="landing-aside" aria-label="Estado de la versión">
         <span className="aside-label">Versión actual</span>
         <strong>Nimvo V1</strong>
-        <p>Registra meses, deudas y gastos, y conserva tu historial en un archivo local cifrado.</p>
+        <p>Registra meses, gastos fijos y gastos, y conserva tu historial en un archivo local cifrado.</p>
       </aside>
     </section>
   )

@@ -6,6 +6,7 @@ import { isValidCivilDate } from '../../domain/dates.ts'
 import type { Category, Expense } from '../../domain/types.ts'
 import { formatMoney, parseMoneyToCents, sumCents } from '../../domain/money.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
+import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
 
 const expenseSchema = z.object({
   spentOn: z.string().refine(isValidCivilDate, 'La fecha no es válida.'),
@@ -125,7 +126,7 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
       <label htmlFor="expense-category">Categoría <select id="expense-category" value={draft.categoryId} onChange={(event) => setDraft((current) => current ? { ...current, categoryId: event.target.value } : current)} disabled={busy}><option value="" disabled>Elegí una categoría</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}{category.isArchived ? ' (archivada)' : ''}</option>)}</select></label>
       <Button className="button button-small category-inline-trigger" type="button" onClick={() => setNewCategory((current) => !current)} disabled={busy}>{newCategory ? 'Cancelar categoría' : 'Nueva categoría'}</Button>
       {newCategory && <div className="inline-category-form"><label htmlFor="expense-new-category">Nombre de categoría <Input id="expense-new-category" autoFocus value={categoryName} onChange={(event) => setCategoryName(event.target.value)} disabled={busy} /></label><Button className="button button-small button-primary" type="button" onClick={createCategory} loading={busy} disabled={busy}>Crear y usar</Button></div>}
-      <label htmlFor="expense-amount">Monto (ARS) <Input id="expense-amount" inputMode="decimal" value={draft.amount} onChange={(event) => setDraft((current) => current ? { ...current, amount: event.target.value } : current)} disabled={busy} /></label>
+      <label htmlFor="expense-amount">Monto (ARS) <ArsMoneyInput id="expense-amount" value={draft.amount} onChange={(event) => setDraft((current) => current ? { ...current, amount: event.target.value } : current)} disabled={busy} /></label>
       <label htmlFor="expense-description">Descripción (opcional) <Input id="expense-description" value={draft.description} onChange={(event) => setDraft((current) => current ? { ...current, description: event.target.value } : current)} disabled={busy} /></label>
       <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>Guardar gasto</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>Cancelar</Button></div>
     </form>}

@@ -1,4 +1,4 @@
-import { Button, Input } from '@chakra-ui/react'
+import { Button } from '@chakra-ui/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Category, Debt, Expense, Month, RecurringDebtTemplate } from '../../domain/types.ts'
@@ -11,6 +11,7 @@ import ExpensesPanel from '../expenses/ExpensesPanel.tsx'
 import CategoriesPanel from '../expenses/CategoriesPanel.tsx'
 import { parseSignedMoneyToCents } from '../months/money.ts'
 import { useVaultSession } from './useVaultSession.ts'
+import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
 
 const monthLabel = (month: Month): string => new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date(month.year, month.month - 1, 1))
 
@@ -65,7 +66,7 @@ function VaultHomePage() {
       if (request !== detailsRequest.current) return
       setDebts(nextDebts)
       setExpenses(nextExpenses)
-    } catch { setError('No se pudieron cargar las deudas.') }
+    } catch { setError('No se pudieron cargar los gastos fijos.') }
   }, [vault])
 
   useEffect(() => {
@@ -96,9 +97,9 @@ function VaultHomePage() {
   async function updateInitial() {
     if (!selected) return
     const amount = parseSignedMoneyToCents(initialDraft)
-    if (amount === null) { setError('El monto inicial no es válido.'); return }
+    if (amount === null) { setError('Los ingresos no son válidos.'); return }
     setBusy(true)
-    try { await vault.operation({ kind: 'months.update', id: selected.id, input: { initialAmountCents: amount } }); setEditingInitial(false); await refreshAll() } catch { setError('No se pudo actualizar el monto inicial.') } finally { setBusy(false) }
+    try { await vault.operation({ kind: 'months.update', id: selected.id, input: { initialAmountCents: amount } }); setEditingInitial(false); await refreshAll() } catch { setError('No se pudieron actualizar los ingresos.') } finally { setBusy(false) }
   }
 
   async function save() { setBusy(true); try { await vault.save() } catch { /* session shows the export error */ } finally { setBusy(false) } }
@@ -118,9 +119,9 @@ function VaultHomePage() {
     {error && <p className="form-message error" role="alert">{error}</p>}
     {!loaded ? <p className="empty-note" role="status">Cargando meses…</p> : <>
       <div className="month-toolbar"><div className="month-nav"><Button className="button button-small" type="button" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>← {previous ? monthLabel(previous) : 'Anterior'}</Button><label htmlFor="month-selector" className="sr-only">Seleccionar mes</label><select id="month-selector" value={selectedId ?? ''} onChange={(event) => setSelectedId(event.target.value || null)}><option value="" disabled>Seleccioná un mes</option>{months.map((month) => <option key={month.id} value={month.id}>{monthLabel(month)}</option>)}</select><Button className="button button-small" type="button" onClick={() => next && setSelectedId(next.id)} disabled={!next}>{next ? monthLabel(next) : 'Siguiente'} →</Button></div><Button className="button button-secondary" type="button" onClick={() => setShowNew(true)}>Nuevo mes</Button></div>
-      {!selected ? <div className="empty-state"><h2>Empezá por crear tu primer mes</h2><p>Elegí el monto inicial y las plantillas que querés llevar a la planilla.</p><Button className="button button-primary" type="button" onClick={() => setShowNew(true)}>Crear primer mes</Button></div> : <>
-        <section className="summary-grid" aria-label="Resumen del mes"><SummaryCell label="Monto inicial" value={formatMoney(selected.initialAmountCents)} action={<Button className="button button-small" type="button" onClick={() => { setInitialDraft(formatMoney(selected.initialAmountCents, { symbol: false })); setEditingInitial(true) }}>Editar</Button>} />{summary && <><SummaryCell label="Deuda pendiente" value={formatMoney(summary.debtPending)} /><SummaryCell label="Saldo" value={formatMoney(summary.balance)} tone={summary.balance < 0 ? 'negative' : summary.balance > 0 ? 'positive' : undefined} /></>}</section>
-        {editingInitial && <div className="inline-form initial-form"><label htmlFor="edit-initial">Monto inicial (ARS)</label><Input id="edit-initial" autoFocus inputMode="decimal" value={initialDraft} onChange={(event) => setInitialDraft(event.target.value)} /><Button className="button button-primary" type="button" onClick={updateInitial} loading={busy}>Guardar monto</Button><Button className="button button-secondary" type="button" onClick={() => setEditingInitial(false)} disabled={busy}>Cancelar</Button></div>}
+      {!selected ? <div className="empty-state"><h2>Empezá por crear tu primer mes</h2><p>Elegí los ingresos y las plantillas que querés llevar a la planilla.</p><Button className="button button-primary" type="button" onClick={() => setShowNew(true)}>Crear primer mes</Button></div> : <>
+        <section className="summary-grid" aria-label="Resumen del mes"><SummaryCell label="Ingresos" value={formatMoney(selected.initialAmountCents)} action={<Button className="button button-small" type="button" onClick={() => { setInitialDraft(formatMoney(selected.initialAmountCents, { symbol: false })); setEditingInitial(true) }}>Editar</Button>} />{summary && <><SummaryCell label="Gasto fijo pendiente" value={formatMoney(summary.debtPending)} /><SummaryCell label="Saldo" value={formatMoney(summary.balance)} tone={summary.balance < 0 ? 'negative' : summary.balance > 0 ? 'positive' : undefined} /></>}</section>
+        {editingInitial && <div className="inline-form initial-form"><label htmlFor="edit-initial">Ingresos (ARS)</label><ArsMoneyInput id="edit-initial" autoFocus allowNegative value={initialDraft} onChange={(event) => setInitialDraft(event.target.value)} /><Button className="button button-primary" type="button" onClick={updateInitial} loading={busy}>Guardar ingresos</Button><Button className="button button-secondary" type="button" onClick={() => setEditingInitial(false)} disabled={busy}>Cancelar</Button></div>}
         <DebtsTable key={selected.id} monthId={selected.id} debts={debts} onRefresh={() => loadMonthDetails(selected.id)} />
         <ExpensesPanel key={`expenses-${selected.id}`} monthId={selected.id} year={selected.year} month={selected.month} expenses={expenses} categories={categories} onRefresh={() => loadMonthDetails(selected.id)} onCategoriesRefresh={loadMonths} />
       </>}

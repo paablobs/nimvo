@@ -6,6 +6,7 @@ import type { Debt } from '../../domain/types.ts'
 import { isValidCivilDate } from '../../domain/dates.ts'
 import { formatMoney, parseMoneyToCents } from '../../domain/money.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
+import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
 
 const debtSchema = z.object({ concept: z.string().trim().min(1, 'Escribí un concepto.'), dueDate: z.string().refine((value) => value === '' || isValidCivilDate(value), 'La fecha de vencimiento no es válida.') })
 
@@ -41,7 +42,7 @@ export default function DebtsTable({ monthId, debts, onRefresh }: Props) {
       else await vault.operation({ kind: 'debts.create', input: { monthId, templateId: null, concept: draft.concept.trim(), amountCents: amount, dueDate: draft.dueDate || null, paidAt: null } })
       setDraft(null)
       await onRefresh()
-    } catch { setError('No se pudo guardar la deuda.') } finally { setBusy(false) }
+    } catch { setError('No se pudo guardar el gasto fijo.') } finally { setBusy(false) }
   }
 
   async function toggle(debt: Debt) {
@@ -52,19 +53,19 @@ export default function DebtsTable({ monthId, debts, onRefresh }: Props) {
   async function remove() {
     if (!deleteId) return
     setBusy(true)
-    try { await vault.operation({ kind: 'debts.delete', id: deleteId }); setDeleteId(null); await onRefresh() } catch { setError('No se pudo eliminar la deuda.') } finally { setBusy(false) }
+    try { await vault.operation({ kind: 'debts.delete', id: deleteId }); setDeleteId(null); await onRefresh() } catch { setError('No se pudo eliminar el gasto fijo.') } finally { setBusy(false) }
   }
 
   return <section className="panel debts-panel" aria-labelledby="debts-title">
-    <div className="section-heading"><div><p className="eyebrow">Compromisos</p><h2 id="debts-title">Deudas</h2></div><Button className="button button-secondary" type="button" onClick={startCreate}>Nueva deuda</Button></div>
+    <div className="section-heading"><div><p className="eyebrow">Compromisos</p><h2 id="debts-title">Gastos Fijos</h2></div><Button className="button button-secondary" type="button" onClick={startCreate}>Nuevo gasto fijo</Button></div>
     {draft && <form className="inline-form debt-form" onSubmit={submit} noValidate>
       <label>Concepto <Input autoFocus value={draft.concept} onChange={(event) => setDraft({ ...draft, concept: event.target.value })} /></label>
-      <label>Importe (ARS) <Input inputMode="decimal" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} /></label>
+      <label>Importe (ARS) <ArsMoneyInput value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} /></label>
       <label>Vencimiento <Input type="date" value={draft.dueDate} onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })} /></label>
-      <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>Guardar deuda</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>Cancelar</Button></div>
+      <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>Guardar gasto fijo</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>Cancelar</Button></div>
     </form>}
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {debts.length === 0 ? <p className="empty-note">Todavía no hay deudas en este mes.</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">Deudas del mes</caption><thead><tr><th>Vencimiento</th><th>Concepto</th><th className="amount-cell">Importe</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{debts.map((debt) => <tr key={debt.id}><td>{debt.dueDate ?? 'Sin fecha'}</td><td>{debt.concept}</td><td className="amount-cell">{formatMoney(debt.amountCents)}</td><td><span className={debt.paidAt ? 'status status-paid' : 'status'}>{debt.paidAt ? 'Pagada' : 'Pendiente'}</span></td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => toggle(debt)} disabled={busy}>{debt.paidAt ? 'Volver pendiente' : 'Marcar pagada'}</Button><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>Editar</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>Eliminar</Button></td></tr>)}</tbody></table></div>}
-    {deleteId && <AccessibleDialog titleId="delete-debt-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-debt-title">¿Eliminar esta deuda?</strong><p>La acción no se puede deshacer.</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>Eliminar</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>Cancelar</Button></div></div></AccessibleDialog>}
+    {debts.length === 0 ? <p className="empty-note">Todavía no hay gastos fijos en este mes.</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">Gastos fijos del mes</caption><thead><tr><th>Vencimiento</th><th>Concepto</th><th className="amount-cell">Importe</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{debts.map((debt) => <tr key={debt.id}><td>{debt.dueDate ?? 'Sin fecha'}</td><td>{debt.concept}</td><td className="amount-cell">{formatMoney(debt.amountCents)}</td><td><span className={debt.paidAt ? 'status status-paid' : 'status'}>{debt.paidAt ? 'Pagada' : 'Pendiente'}</span></td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => toggle(debt)} disabled={busy}>{debt.paidAt ? 'Volver pendiente' : 'Marcar pagada'}</Button><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>Editar</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>Eliminar</Button></td></tr>)}</tbody></table></div>}
+    {deleteId && <AccessibleDialog titleId="delete-debt-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-debt-title">¿Eliminar este gasto fijo?</strong><p>La acción no se puede deshacer.</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>Eliminar</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>Cancelar</Button></div></div></AccessibleDialog>}
   </section>
 }

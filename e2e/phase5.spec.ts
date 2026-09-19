@@ -24,9 +24,9 @@ async function createMonth(page: Page, month: string, initial: string) {
   const dialog = page.getByRole('dialog', { name: 'Nuevo mes' })
   await dialog.locator('#month-year').fill('2026')
   await dialog.locator('#month-number').fill(month)
-  await dialog.getByLabel('Monto inicial (ARS)', { exact: true }).fill(initial)
+  await dialog.getByLabel('Ingresos (ARS)', { exact: true }).fill(initial)
   await dialog.getByRole('button', { name: 'Crear mes' }).click()
-  await expect(page.getByText('Deuda pendiente')).toBeVisible()
+  await expect(page.getByText('Gasto fijo pendiente')).toBeVisible()
 }
 
 async function addArchivedExpense(page: Page) {
@@ -46,10 +46,10 @@ async function addArchivedExpense(page: Page) {
 test('muestra dos meses en orden, totales y categorías archivadas', async ({ page }) => {
   await createVault(page)
   await createMonth(page, '9', '200000')
-  await page.getByRole('button', { name: 'Nueva deuda' }).click()
+  await page.getByRole('button', { name: 'Nuevo gasto fijo' }).click()
   await page.getByLabel('Concepto').fill('Seguro')
   await page.getByLabel('Importe (ARS)').fill('50000')
-  await page.getByRole('button', { name: 'Guardar deuda' }).click()
+  await page.getByRole('button', { name: 'Guardar gasto fijo' }).click()
   await addArchivedExpense(page)
   await createMonth(page, '8', '100000')
 

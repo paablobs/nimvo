@@ -1,15 +1,15 @@
 # Nimvo
 
-Nimvo es una aplicación web local para administrar finanzas mensuales como una planilla. Permite registrar meses, deudas y gastos, comparar períodos y guardar todo en un único archivo cifrado `.nimvo`.
+Nimvo es una aplicación web local para administrar finanzas mensuales como una planilla. Permite registrar meses, gastos fijos y gastos, comparar períodos y guardar todo en un único archivo cifrado `.nimvo`.
 
 No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejecuta en el navegador y los datos financieros no se guardan en `localStorage` ni se envían por red.
 
 ## Funciones
 
 - Crear y abrir una bóveda protegida con contraseña.
-- Administrar meses con un monto inicial editable.
-- Crear plantillas de deudas recurrentes y usarlas al generar un mes.
-- Crear, editar, pagar y eliminar deudas.
+- Administrar meses con ingresos editables.
+- Crear plantillas de gastos fijos recurrentes y usarlas al generar un mes.
+- Crear, editar, pagar y eliminar gastos fijos.
 - Registrar, editar y eliminar gastos diarios.
 - Crear, renombrar y archivar categorías.
 - Consultar gastos agrupados por categoría.
@@ -23,13 +23,13 @@ La interfaz usa ARS y presenta los importes con formato `es-AR`. Internamente, t
 ## Cálculo mensual
 
 ```text
-deuda_total     = suma de todas las deudas del mes
-deuda_pendiente = suma de las deudas sin pagar
+gastos_fijos_total     = suma de todos los gastos fijos del mes
+gastos_fijos_pendiente = suma de los gastos fijos sin pagar
 gastos          = suma de los gastos diarios
-saldo           = monto_inicial - deuda_total - gastos
+saldo           = ingresos - gastos_fijos_total - gastos
 ```
 
-Marcar una deuda como pagada reduce la deuda pendiente, pero no cambia el saldo: el importe ya estaba reservado dentro de la deuda total.
+Marcar un gasto fijo como pagado reduce los gastos fijos pendientes, pero no cambia el saldo: el importe ya estaba reservado dentro del total de gastos fijos.
 
 ## Requisitos
 
@@ -126,7 +126,7 @@ src/
 │   ├── repositories/  consultas tipadas por dominio
 │   └── worker/        worker y protocolo de mensajes
 ├── domain/       tipos, dinero, fechas y cálculos puros
-├── features/     bóveda, meses, deudas, gastos e historial
+├── features/     bóveda, meses, gastos fijos, gastos e historial
 ├── test/         configuración y utilidades de pruebas
 └── theme/        tema y tokens visuales
 
@@ -201,23 +201,23 @@ Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el
 
 # English
 
-Nimvo is a local-first web application for managing monthly finances as a spreadsheet. It tracks months, recurring debts, daily expenses, categories, balances, and historical comparisons in one encrypted `.nimvo` file.
+Nimvo is a local-first web application for managing monthly finances as a spreadsheet. It tracks months, recurring fixed expenses, daily expenses, categories, balances, and historical comparisons in one encrypted `.nimvo` file.
 
 It has no backend, user accounts, or remote database. SQLite runs inside the browser, and financial data is neither stored in `localStorage` nor sent over the network. The only persisted browser preference is the visual theme.
 
 ## Features
 
 - Create and open password-protected vaults.
-- Track an editable starting amount for each month.
-- Create recurring debt templates and apply them to new months.
-- Create, edit, pay, and delete debts.
+- Track editable income for each month.
+- Create recurring fixed-expense templates and apply them to new months.
+- Create, edit, pay, and delete fixed expenses.
 - Create, edit, and delete daily expenses.
 - Create, rename, and archive expense categories.
 - Review expenses by category and compare monthly history.
 - Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
 - Warn about unsaved changes and switch between light and dark themes.
 
-Amounts use ARS and `es-AR` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is the starting amount minus total debt and daily expenses. Marking a debt as paid changes the pending debt amount but not the balance because the debt was already included in the total.
+Amounts use ARS and `es-AR` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 
 ## Requirements and setup
 
