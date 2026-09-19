@@ -1,5 +1,5 @@
 User-agent: *
-Allow: /nimvo/
+Allow: /
 Disallow: /nimvo/crear
 Disallow: /nimvo/abrir
 Disallow: /nimvo/boveda
