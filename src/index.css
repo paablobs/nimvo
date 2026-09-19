@@ -63,10 +63,15 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--bg);
 }
 
@@ -120,11 +125,16 @@ input:focus-visible {
   text-decoration: none;
 }
 
-nav {
+.site-header-controls,
+nav,
+.preference-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
+.site-header-controls { flex-direction: row; }
+.preference-controls { justify-content: flex-end; }
 
 .nav-link,
 .text-link {
@@ -153,6 +163,15 @@ nav {
   color: var(--text) !important;
   background: transparent !important;
 }
+
+.preferences-menu { position: relative; }
+.preferences-trigger { min-width: 38px; padding: 0 8px; }
+.preferences-popover { position: absolute; z-index: 20; right: 0; top: calc(100% + 8px); display: grid; gap: 12px; min-width: 220px; padding: 14px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 12%); }
+.preferences-popover fieldset { margin: 0; padding: 8px; border: 1px solid var(--line); }
+.preferences-popover legend { padding: 0 4px; color: var(--muted); font-size: 0.72rem; }
+.preference-options { display: flex; gap: 6px; }
+.preference-options button { flex: 1; padding: 6px 7px; border: 1px solid var(--line); color: var(--text); background: transparent; cursor: pointer; font: inherit; font-size: 0.7rem; }
+.preference-options button.selected { border-color: var(--accent); color: var(--accent-ink); background: var(--accent); }
 
 main {
   flex: 1;
@@ -620,7 +639,7 @@ h1 {
 
 .panel { padding: 24px 0; border-top: 1px solid var(--line); }
 .section-heading h2 { margin: 0; font-size: 1.45rem; font-weight: 500; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { max-width: 100%; overflow: auto; }
 .data-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.82rem; }
 .data-table th,
 .data-table td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -686,7 +705,7 @@ h1 {
 .history-header h1 { font-size: clamp(2rem, 5vw, 4rem); }
 .history-lede { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
 .history-empty { margin-top: 28px; }
-.history-table-scroll { margin-top: 28px; overflow-x: auto; border-top: 1px solid var(--line-strong); }
+.history-table-scroll { max-width: 100%; margin-top: 28px; overflow: auto; border-top: 1px solid var(--line-strong); }
 .history-table { min-width: 960px; }
 .history-table th,
 .history-table td { padding: 14px 12px; }
@@ -740,7 +759,16 @@ h1 {
 
   .site-header {
     min-height: 68px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 12px 0;
   }
+
+  .site-header-controls { display: contents; }
+  .site-header nav { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-content: flex-start; flex-wrap: wrap; min-width: 0; }
+  .preference-controls { grid-column: 2; grid-row: 1; }
 
   .nav-link {
     padding: 8px 4px;

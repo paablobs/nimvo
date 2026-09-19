@@ -16,6 +16,8 @@ describe('domain contracts', () => {
     expect(parseMoneyToCents('-1.234,56')).toBeNull()
     expect(parseMoneyToCents('+1.234,56')).toBeNull()
     expect(parseSignedMoneyToCents('-90.071.992.547.409,92')).toBeNull()
+    expect(parseSignedMoneyToCents('1,234.56', 'es-AR')).toBe(123456)
+    expect(parseSignedMoneyToCents('1.234,56', 'en-US')).toBe(123456)
   })
 
   it('counts only debts with paidAt as paid and detects signed overflow', () => {

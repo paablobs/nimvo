@@ -12,11 +12,14 @@ import CategoriesPanel from '../expenses/CategoriesPanel.tsx'
 import { parseSignedMoneyToCents } from '../months/money.ts'
 import { useVaultSession } from './useVaultSession.ts'
 import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
+import { reformatArsMoneyInput } from '../../components/arsMoneyInput.ts'
+import { useI18n } from '../../i18n/useI18n.ts'
 
-const monthLabel = (month: Month): string => new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date(month.year, month.month - 1, 1))
+const monthLabel = (month: Month, locale: string): string => new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(month.year, month.month - 1, 1))
 
 function VaultHomePage() {
   const navigate = useNavigate()
+  const { t, numberFormat, locale } = useI18n()
   const [searchParams] = useSearchParams()
   const requestedMonthId = searchParams.get('month')
   const vault = useVaultSession()
@@ -35,6 +38,14 @@ function VaultHomePage() {
   const [initialDraft, setInitialDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const detailsRequest = useRef(0)
+  const actionsMenuRef = useRef<HTMLDetailsElement>(null)
+  const previousNumberFormat = useRef(numberFormat)
+
+  useEffect(() => {
+    if (previousNumberFormat.current === numberFormat) return
+    setInitialDraft((current) => reformatArsMoneyInput(current, true, previousNumberFormat.current, numberFormat))
+    previousNumberFormat.current = numberFormat
+  }, [numberFormat])
 
   const selected = months.find((month) => month.id === selectedId) ?? null
 
@@ -52,8 +63,8 @@ function VaultHomePage() {
         ? requestedMonthId
         : current && nextMonths.some((month) => month.id === current) ? current : nextMonths[0]?.id ?? null)
       setLoaded(true)
-    } catch { setError('No se pudo cargar la bóveda.') }
-  }, [vault, requestedMonthId])
+    } catch { setError(t('vaultLoadError')) }
+  }, [vault, requestedMonthId, t])
 
   const loadMonthDetails = useCallback(async (monthId: string) => {
     const request = detailsRequest.current + 1
@@ -66,8 +77,8 @@ function VaultHomePage() {
       if (request !== detailsRequest.current) return
       setDebts(nextDebts)
       setExpenses(nextExpenses)
-    } catch { setError('No se pudieron cargar los gastos fijos.') }
-  }, [vault])
+    } catch { setError(t('expensesLoadError')) }
+  }, [vault, t])
 
   useEffect(() => {
     if (vault.status !== 'unlocked') return
@@ -96,32 +107,33 @@ function VaultHomePage() {
 
   async function updateInitial() {
     if (!selected) return
-    const amount = parseSignedMoneyToCents(initialDraft)
-    if (amount === null) { setError('Los ingresos no son válidos.'); return }
+    const amount = parseSignedMoneyToCents(initialDraft, numberFormat)
+    if (amount === null) { setError(t('incomeInvalid')); return }
     setBusy(true)
-    try { await vault.operation({ kind: 'months.update', id: selected.id, input: { initialAmountCents: amount } }); setEditingInitial(false); await refreshAll() } catch { setError('No se pudieron actualizar los ingresos.') } finally { setBusy(false) }
+    try { await vault.operation({ kind: 'months.update', id: selected.id, input: { initialAmountCents: amount } }); setEditingInitial(false); await refreshAll() } catch { setError(t('incomeUpdateError')) } finally { setBusy(false) }
   }
 
   async function save() { setBusy(true); try { await vault.save() } catch { /* session shows the export error */ } finally { setBusy(false) } }
   async function saveAs() { setBusy(true); try { await vault.saveAs() } catch { /* session shows the export error */ } finally { setBusy(false) } }
   async function saveCopy() { setBusy(true); try { await vault.saveCopy() } catch { /* session shows the export error */ } finally { setBusy(false) } }
   async function lock() { await vault.lock(); navigate('/') }
+  function closeActionsMenu() { if (actionsMenuRef.current) actionsMenuRef.current.open = false }
 
   const summary = useMemo(() => selected ? calculateMonthlySummary({ month: selected, debts, expenses }) : null, [selected, debts, expenses])
   const selectedIndex = selected ? months.findIndex((month) => month.id === selected.id) : -1
   const previous = selectedIndex >= 0 ? months[selectedIndex + 1] : undefined
   const next = selectedIndex > 0 ? months[selectedIndex - 1] : undefined
 
-  if (vault.status !== 'unlocked') return <section className="page-section compact-section"><p className="eyebrow">Bóveda bloqueada</p><h1>Abre un archivo para continuar.</h1><Button className="button button-primary" onClick={() => navigate('/abrir')}>Abrir archivo</Button></section>
+  if (vault.status !== 'unlocked') return <section className="page-section compact-section"><p className="eyebrow">{t('lockedVault')}</p><h1>{t('openToContinue')}</h1><Button className="button button-primary" onClick={() => navigate('/abrir')}>{t('openFile')}</Button></section>
 
   return <section className="page-section vault-workspace">
-    <header className="workspace-header"><div><p className="eyebrow">Bóveda</p><h1>Tu archivo está listo.</h1><p className="workspace-title">Planilla mensual</p>{vault.activeFileName ? <p className="file-link-status" role="status">Archivo vinculado: {vault.activeFileName}</p> : <p className="file-link-status" role="status">{vault.directFileAccessSupported ? 'Sin archivo vinculado todavía.' : 'Modo descarga: tu navegador no ofrece acceso directo al archivo.'}</p>}</div><div className="workspace-actions"><div className="workspace-action-buttons"><Button className="button button-primary" onClick={save} loading={busy} disabled={busy}>{vault.directFileAccessSupported ? (vault.activeFileName ? 'Guardar' : 'Elegir dónde guardar') : 'Descargar copia'}</Button><Button className="button button-secondary" onClick={lock} disabled={busy}>Bloquear</Button><details className="actions-menu"><summary>Acciones</summary><div className="menu-popover">{vault.directFileAccessSupported && <><button type="button" onClick={saveAs} disabled={busy}>Guardar como…</button><button type="button" onClick={saveCopy} disabled={busy}>Descargar copia</button></>}<Link className="menu-link" to="/boveda/historial">Historial</Link><button type="button" onClick={() => setShowTemplates(true)}>Plantillas</button><button type="button" onClick={() => setShowCategories(true)}>Categorías</button><button type="button" onClick={lock} disabled={busy}>Bloquear</button></div></details></div><span className="dirty-state" aria-live="polite">{vault.dirty ? 'Cambios sin guardar' : 'Guardado'}</span></div></header>
+    <header className="workspace-header"><div><p className="eyebrow">{t('vault')}</p><h1>{t('readyTitle')}</h1><p className="workspace-title">{t('monthlySheet')}</p>{vault.activeFileName ? <p className="file-link-status" role="status">{t('linkedFile', { name: vault.activeFileName })}</p> : <p className="file-link-status" role="status">{vault.directFileAccessSupported ? t('noLinkedFile') : t('downloadMode')}</p>}</div><div className="workspace-actions"><div className="workspace-action-buttons"><Button className="button button-primary" onClick={save} loading={busy} disabled={busy}>{vault.directFileAccessSupported ? (vault.activeFileName ? t('save') : t('chooseSaveLocation')) : t('downloadCopy')}</Button><Button className="button button-secondary" onClick={() => { closeActionsMenu(); void lock() }} disabled={busy}>{t('lock')}</Button><details ref={actionsMenuRef} className="actions-menu"><summary>{t('actions')}</summary><div className="menu-popover">{vault.directFileAccessSupported && <><button type="button" onClick={() => { closeActionsMenu(); void saveAs() }} disabled={busy}>{t('saveAs')}</button><button type="button" onClick={() => { closeActionsMenu(); void saveCopy() }} disabled={busy}>{t('downloadCopy')}</button></>}<Link className="menu-link" to="/boveda/historial" onClick={closeActionsMenu}>{t('history')}</Link><button type="button" onClick={() => { closeActionsMenu(); setShowTemplates(true) }}>{t('templates')}</button><button type="button" onClick={() => { closeActionsMenu(); setShowCategories(true) }}>{t('categories')}</button><button type="button" onClick={() => { closeActionsMenu(); void lock() }} disabled={busy}>{t('lock')}</button></div></details></div><span className="dirty-state" aria-live="polite">{vault.dirty ? t('unsavedChanges') : t('saved')}</span></div></header>
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {!loaded ? <p className="empty-note" role="status">Cargando meses…</p> : <>
-      <div className="month-toolbar"><div className="month-nav"><Button className="button button-small" type="button" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>← {previous ? monthLabel(previous) : 'Anterior'}</Button><label htmlFor="month-selector" className="sr-only">Seleccionar mes</label><select id="month-selector" value={selectedId ?? ''} onChange={(event) => setSelectedId(event.target.value || null)}><option value="" disabled>Seleccioná un mes</option>{months.map((month) => <option key={month.id} value={month.id}>{monthLabel(month)}</option>)}</select><Button className="button button-small" type="button" onClick={() => next && setSelectedId(next.id)} disabled={!next}>{next ? monthLabel(next) : 'Siguiente'} →</Button></div><Button className="button button-secondary" type="button" onClick={() => setShowNew(true)}>Nuevo mes</Button></div>
-      {!selected ? <div className="empty-state"><h2>Empezá por crear tu primer mes</h2><p>Elegí los ingresos y las plantillas que querés llevar a la planilla.</p><Button className="button button-primary" type="button" onClick={() => setShowNew(true)}>Crear primer mes</Button></div> : <>
-        <section className="summary-grid" aria-label="Resumen del mes"><SummaryCell label="Ingresos" value={formatMoney(selected.initialAmountCents)} action={<Button className="button button-small" type="button" onClick={() => { setInitialDraft(formatMoney(selected.initialAmountCents, { symbol: false })); setEditingInitial(true) }}>Editar</Button>} />{summary && <><SummaryCell label="Gasto fijo pendiente" value={formatMoney(summary.debtPending)} /><SummaryCell label="Saldo" value={formatMoney(summary.balance)} tone={summary.balance < 0 ? 'negative' : summary.balance > 0 ? 'positive' : undefined} /></>}</section>
-        {editingInitial && <div className="inline-form initial-form"><label htmlFor="edit-initial">Ingresos (ARS)</label><ArsMoneyInput id="edit-initial" autoFocus allowNegative value={initialDraft} onChange={(event) => setInitialDraft(event.target.value)} /><Button className="button button-primary" type="button" onClick={updateInitial} loading={busy}>Guardar ingresos</Button><Button className="button button-secondary" type="button" onClick={() => setEditingInitial(false)} disabled={busy}>Cancelar</Button></div>}
+    {!loaded ? <p className="empty-note" role="status">{t('loadingMonths')}</p> : <>
+      <div className="month-toolbar"><div className="month-nav"><Button className="button button-small" type="button" onClick={() => previous && setSelectedId(previous.id)} disabled={!previous}>← {previous ? monthLabel(previous, locale === 'es' ? 'es-AR' : 'en-US') : t('previous')}</Button><label htmlFor="month-selector" className="sr-only">{t('selectMonth')}</label><select id="month-selector" value={selectedId ?? ''} onChange={(event) => setSelectedId(event.target.value || null)}><option value="" disabled>{t('selectMonth')}</option>{months.map((month) => <option key={month.id} value={month.id}>{monthLabel(month, locale === 'es' ? 'es-AR' : 'en-US')}</option>)}</select><Button className="button button-small" type="button" onClick={() => next && setSelectedId(next.id)} disabled={!next}>{next ? monthLabel(next, locale === 'es' ? 'es-AR' : 'en-US') : t('next')} →</Button></div><Button className="button button-secondary" type="button" onClick={() => setShowNew(true)}>{t('newMonth')}</Button></div>
+      {!selected ? <div className="empty-state"><h2>{t('firstMonthTitle')}</h2><p>{t('firstMonthLead')}</p><Button className="button button-primary" type="button" onClick={() => setShowNew(true)}>{t('createFirstMonth')}</Button></div> : <>
+        <section className="summary-grid" aria-label={t('monthSummary')}><SummaryCell label={t('income')} value={formatMoney(selected.initialAmountCents, { locale: numberFormat })} action={<Button className="button button-small" type="button" onClick={() => { setInitialDraft(formatMoney(selected.initialAmountCents, { symbol: false, locale: numberFormat })); setEditingInitial(true) }}>{t('edit')}</Button>} />{summary && <><SummaryCell label={t('pendingFixed')} value={formatMoney(summary.debtPending, { locale: numberFormat })} /><SummaryCell label={t('balance')} value={formatMoney(summary.balance, { locale: numberFormat })} tone={summary.balance < 0 ? 'negative' : summary.balance > 0 ? 'positive' : undefined} /></>}</section>
+        {editingInitial && <div className="inline-form initial-form"><label htmlFor="edit-initial">{t('amountArs')}</label><ArsMoneyInput id="edit-initial" autoFocus allowNegative locale={numberFormat} value={initialDraft} onChange={(event) => setInitialDraft(event.target.value)} /><Button className="button button-primary" type="button" onClick={updateInitial} loading={busy}>{t('saveIncome')}</Button><Button className="button button-secondary" type="button" onClick={() => setEditingInitial(false)} disabled={busy}>{t('cancel')}</Button></div>}
         <DebtsTable key={selected.id} monthId={selected.id} debts={debts} onRefresh={() => loadMonthDetails(selected.id)} />
         <ExpensesPanel key={`expenses-${selected.id}`} monthId={selected.id} year={selected.year} month={selected.month} expenses={expenses} categories={categories} onRefresh={() => loadMonthDetails(selected.id)} onCategoriesRefresh={loadMonths} />
       </>}

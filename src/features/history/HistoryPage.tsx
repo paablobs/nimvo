@@ -4,11 +4,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { formatMoney } from '../../domain/money.ts'
 import type { CategoryBreakdown, MonthlyHistoryRow } from '../../domain/history.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
+import { useI18n } from '../../i18n/useI18n.ts'
 
-const monthLabel = (row: MonthlyHistoryRow): string => new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date(row.year, row.month - 1, 1))
+const monthLabel = (row: MonthlyHistoryRow, locale: string): string => new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(row.year, row.month - 1, 1))
 
 function HistoryPage() {
   const navigate = useNavigate()
+  const { t, locale, numberFormat } = useI18n()
   const vault = useVaultSession()
   const [rows, setRows] = useState<MonthlyHistoryRow[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -30,45 +32,45 @@ function HistoryPage() {
       }).catch(() => {
         if (cancelled) return
         setRows([])
-        setError('No se pudo cargar el historial.')
+        setError(t('historyLoadError'))
         setLoadState('error')
       })
     })
     return () => { cancelled = true }
-  }, [vault, vault.status])
+  }, [vault, vault.status, t])
 
   if (vault.status !== 'unlocked') {
     return <section className="page-section compact-section history-locked" aria-labelledby="history-locked-title">
-      <p className="eyebrow">Historial</p>
-      <h1 id="history-locked-title">Abrí la bóveda para ver tus meses.</h1>
-      <button className="button button-primary" type="button" onClick={() => navigate('/abrir')}>Abrir archivo</button>
+      <p className="eyebrow">{t('history')}</p>
+      <h1 id="history-locked-title">{t('openToContinue')}</h1>
+      <button className="button button-primary" type="button" onClick={() => navigate('/abrir')}>{t('openFile')}</button>
     </section>
   }
 
   return <section className="page-section history-page" aria-labelledby="history-title">
     <header className="history-header">
       <div>
-        <p className="eyebrow">Bóveda / historial</p>
-        <h1 id="history-title">Historial mensual</h1>
-        <p className="history-lede">Una vista comparativa de cada mes, en el orden más reciente.</p>
+        <p className="eyebrow">{t('historyEyebrow')}</p>
+        <h1 id="history-title">{t('monthlyHistory')}</h1>
+        <p className="history-lede">{t('historyLead')}</p>
       </div>
-      <Link className="button button-secondary" to="/boveda">Volver al mes</Link>
+      <Link className="button button-secondary" to="/boveda">{t('backToMonth')}</Link>
     </header>
 
     {loadState === 'error' && <p className="form-message error" role="alert">{error}</p>}
-    {loadState === 'loading' && <p className="empty-note" role="status">Cargando historial…</p>}
-    {loadState === 'ready' && rows.length === 0 && <div className="empty-state history-empty"><h2>Todavía no hay meses</h2><p>Creá un mes en la planilla para empezar a guardar su historial.</p><Link className="button button-primary" to="/boveda">Ir a la planilla</Link></div>}
+    {loadState === 'loading' && <p className="empty-note" role="status">{t('loadingHistory')}</p>}
+    {loadState === 'ready' && rows.length === 0 && <div className="empty-state history-empty"><h2>{t('noMonths')}</h2><p>{t('historyEmpty')}</p><Link className="button button-primary" to="/boveda">{t('goToSheet')}</Link></div>}
     {loadState === 'ready' && rows.length > 0 && <div className="history-table-scroll">
-      <table className="data-table history-table" aria-label="Historial mensual">
-        <caption className="sr-only">Comparación de montos por mes</caption>
+        <table className="data-table history-table" aria-label={t('monthlyHistoryLabel')}>
+        <caption className="sr-only">{t('comparisonCaption')}</caption>
         <thead><tr>
-          <th scope="col">Mes</th>
-          <th scope="col" className="amount-cell">Ingresos</th>
-          <th scope="col" className="amount-cell">Gastos fijos totales</th>
-          <th scope="col" className="amount-cell">Gastos fijos pendientes</th>
-          <th scope="col" className="amount-cell">Gastos diarios</th>
-          <th scope="col" className="amount-cell">Saldo</th>
-          <th scope="col"><span className="sr-only">Desglose</span></th>
+          <th scope="col">{t('month')}</th>
+          <th scope="col" className="amount-cell">{t('income')}</th>
+          <th scope="col" className="amount-cell">{t('totalFixed')}</th>
+          <th scope="col" className="amount-cell">{t('pendingFixedShort')}</th>
+          <th scope="col" className="amount-cell">{t('dailyExpenses')}</th>
+          <th scope="col" className="amount-cell">{t('balance')}</th>
+          <th scope="col"><span className="sr-only">{t('breakdown')}</span></th>
         </tr></thead>
         <tbody>{rows.map((row, index) => {
           const key = row.monthId
@@ -79,6 +81,9 @@ function HistoryPage() {
             row={row}
             detailId={detailId}
             expanded={isExpanded}
+            translator={t}
+            locale={locale}
+            numberFormat={numberFormat}
             onToggle={() => setExpanded((current) => ({ ...current, [key]: !isExpanded }))}
           />
         })}</tbody>
@@ -87,21 +92,21 @@ function HistoryPage() {
   </section>
 }
 
-function HistoryRow({ row, detailId, expanded, onToggle }: { row: MonthlyHistoryRow; detailId: string; expanded: boolean; onToggle: () => void }) {
-  const month = monthLabel(row)
+function HistoryRow({ row, detailId, expanded, onToggle, translator, locale, numberFormat }: { row: MonthlyHistoryRow; detailId: string; expanded: boolean; onToggle: () => void; translator: ReturnType<typeof useI18n>['t']; locale: string; numberFormat: 'en-US' | 'es-AR' }) {
+  const month = monthLabel(row, locale === 'es' ? 'es-AR' : 'en-US')
   const categories: CategoryBreakdown[] = row.categoryBreakdown
-  const categoryLabel = categories.length === 0 ? 'Sin gastos por categoría' : `${categories.length} ${categories.length === 1 ? 'categoría' : 'categorías'}`
+  const categoryLabel = categories.length === 0 ? translator('noCategoryExpenses') : `${categories.length} ${categories.length === 1 ? translator('categoriesCountOne') : translator('categoriesCountMany')}`
   return <>
     <tr>
-      <th scope="row" className="history-month-cell"><span>{month}</span><Link to={`/boveda?month=${encodeURIComponent(row.monthId)}`}>Volver al mes</Link></th>
-      <td className="amount-cell">{formatMoney(row.initialAmountCents)}</td>
-      <td className="amount-cell">{formatMoney(row.debtTotal)}</td>
-      <td className="amount-cell">{formatMoney(row.debtPending)}</td>
-      <td className="amount-cell">{formatMoney(row.dailyExpenses)}</td>
-      <td className="amount-cell">{formatMoney(row.balance)}</td>
-      <td className="history-detail-cell"><button className="button button-small" type="button" aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>{expanded ? 'Ocultar' : 'Ver'} desglose<span className="sr-only"> de {month}</span></button></td>
+      <th scope="row" className="history-month-cell"><span>{month}</span><Link to={`/boveda?month=${encodeURIComponent(row.monthId)}`}>{translator('backToMonth')}</Link></th>
+      <td className="amount-cell">{formatMoney(row.initialAmountCents, { locale: numberFormat })}</td>
+      <td className="amount-cell">{formatMoney(row.debtTotal, { locale: numberFormat })}</td>
+      <td className="amount-cell">{formatMoney(row.debtPending, { locale: numberFormat })}</td>
+      <td className="amount-cell">{formatMoney(row.dailyExpenses, { locale: numberFormat })}</td>
+      <td className="amount-cell">{formatMoney(row.balance, { locale: numberFormat })}</td>
+      <td className="history-detail-cell"><button className="button button-small" type="button" aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>{expanded ? translator('hide') : translator('show')} {translator('breakdown')}<span className="sr-only"> {translator('breakdownOf', { month })}</span></button></td>
     </tr>
-    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>Desglose de categorías · {month}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`Categorías de ${month}`}><thead><tr><th scope="col">Categoría</th><th scope="col">Estado</th><th scope="col" className="amount-cell">Gastos</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">Archivada</span> : 'Activa'}</td><td className="amount-cell">{formatMoney(category.amountCents)}</td></tr>)}</tbody></table>}</div></td></tr>}
+    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>{translator('categoryBreakdownTitle', { month })}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`${translator('category')} ${month}`}><thead><tr><th scope="col">{translator('category')}</th><th scope="col">{translator('status')}</th><th scope="col" className="amount-cell">{translator('expensesEyebrow')}</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">{translator('archived')}</span> : translator('active')}</td><td className="amount-cell">{formatMoney(category.amountCents, { locale: numberFormat })}</td></tr>)}</tbody></table>}</div></td></tr>}
   </>
 }
 

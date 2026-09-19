@@ -11,13 +11,13 @@ async function disableDirectFileAccess(page: Page) {
 async function createCopy(page: Page, testInfo: TestInfo) {
   await disableDirectFileAccess(page)
   await page.goto('/crear')
-  await page.getByLabel('Contraseña', { exact: true }).fill('phase2-password')
-  await page.getByLabel('Confirmar contraseña').fill('phase2-password')
-  await page.getByRole('button', { name: 'Crear bóveda' }).click()
-  await expect(page.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
+  await page.getByLabel('Password', { exact: true }).fill('phase2-password')
+  await page.getByLabel('Confirm password').fill('phase2-password')
+  await page.getByRole('button', { name: 'Create vault' }).click()
+  await expect(page.getByRole('heading', { name: 'Your file is ready.' })).toBeVisible()
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Descargar copia' }).click(),
+    page.getByRole('button', { name: 'Download copy' }).click(),
   ])
   expect(download.suggestedFilename()).toMatch(/^nimvo-\d{4}-\d{2}-\d{2}-\d{4}\.nimvo$/)
   const path = await download.path()
@@ -29,31 +29,31 @@ async function createCopy(page: Page, testInfo: TestInfo) {
 
 test('crea, descarga, bloquea y vuelve a abrir la misma bóveda', async ({ page }, testInfo) => {
   const copy = await createCopy(page, testInfo)
-  await page.getByRole('button', { name: 'Bloquear' }).first().click()
+  await page.getByRole('button', { name: 'Lock' }).first().click()
   await expect(page).toHaveURL(/\/$/)
 
   await page.goto('/abrir')
   await page.locator('#vault-file').setInputFiles(copy)
-  await page.getByLabel('Contraseña').fill('phase2-password')
-  await page.getByRole('button', { name: 'Abrir bóveda' }).click()
-  await expect(page.getByRole('heading', { name: 'Tu archivo está listo.' })).toBeVisible()
+  await page.getByLabel('Password').fill('phase2-password')
+  await page.getByRole('button', { name: 'Open vault' }).click()
+  await expect(page.getByRole('heading', { name: 'Your file is ready.' })).toBeVisible()
 })
 
 test('rechaza contraseña incorrecta y bytes alterados', async ({ page }, testInfo) => {
   const copy = await createCopy(page, testInfo)
-  await page.getByRole('button', { name: 'Bloquear' }).first().click()
+  await page.getByRole('button', { name: 'Lock' }).first().click()
   await page.goto('/abrir')
   await page.locator('#vault-file').setInputFiles(copy)
-  await page.getByLabel('Contraseña').fill('incorrecta')
-  await page.getByRole('button', { name: 'Abrir bóveda' }).click()
-  await expect(page.getByRole('alert')).toHaveText('Contraseña incorrecta o archivo dañado')
+  await page.getByLabel('Password').fill('incorrecta')
+  await page.getByRole('button', { name: 'Open vault' }).click()
+  await expect(page.getByRole('alert')).toHaveText('The file could not be opened.')
 
   const altered = testInfo.outputPath('phase2-altered.nimvo')
   const bytes = await readFile(copy)
   bytes[bytes.length - 1] ^= 1
   await writeFile(altered, bytes)
   await page.locator('#vault-file').setInputFiles(altered)
-  await page.getByLabel('Contraseña').fill('phase2-password')
-  await page.getByRole('button', { name: 'Abrir bóveda' }).click()
-  await expect(page.getByRole('alert')).toHaveText('Contraseña incorrecta o archivo dañado')
+  await page.getByLabel('Password').fill('phase2-password')
+  await page.getByRole('button', { name: 'Open vault' }).click()
+  await expect(page.getByRole('alert')).toHaveText('The file could not be opened.')
 })

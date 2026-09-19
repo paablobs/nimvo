@@ -18,7 +18,7 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Avisar cuando hay cambios sin guardar antes de cerrar la pestaña.
 - Alternar entre tema claro y oscuro.
 
-La interfaz usa ARS y presenta los importes con formato `es-AR`. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
+La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. ARS puede mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
 
 ## Cálculo mensual
 
@@ -112,7 +112,7 @@ magic | versión | parámetros KDF | salt | IV | SQLite cifrado + tag
 
 Las versiones actuales también pueden abrir archivos `.moneo` creados por versiones anteriores. Al abrir uno, Nimvo lo trata como una importación de compatibilidad y la próxima copia se guarda como `.nimvo`; un archivo legado abierto desde el selector no queda vinculado para sobrescritura.
 
-La única preferencia persistida en `localStorage` es el tema visual.
+`localStorage` persiste únicamente preferencias de presentación: tema (`nimvo-theme`), idioma (`nimvo-language`) y formato numérico (`nimvo-number-format`). Nunca guarda contraseñas, claves, datos financieros ni SQLite.
 
 ## Arquitectura
 
@@ -203,7 +203,7 @@ Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el
 
 Nimvo is a local-first web application for managing monthly finances as a spreadsheet. It tracks months, recurring fixed expenses, daily expenses, categories, balances, and historical comparisons in one encrypted `.nimvo` file.
 
-It has no backend, user accounts, or remote database. SQLite runs inside the browser, and financial data is neither stored in `localStorage` nor sent over the network. The only persisted browser preference is the visual theme.
+It has no backend, user accounts, or remote database. SQLite runs inside the browser, and financial data is neither stored in `localStorage` nor sent over the network. English is the default interface language; the preferences menu can switch to Spanish and choose the ARS number format independently.
 
 ## Features
 
@@ -217,7 +217,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
 - Warn about unsaved changes and switch between light and dark themes.
 
-Amounts use ARS and `es-AR` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
+Amounts use ARS and can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 
 ## Requirements and setup
 

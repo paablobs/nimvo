@@ -3,17 +3,19 @@ import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useVaultSession } from './useVaultSession.ts'
+import { useI18n } from '../../i18n/useI18n.ts'
 
 const createSchema = z.object({
-  password: z.string().min(8, 'Usa una contraseña de al menos 8 caracteres.'),
+  password: z.string().min(8, 'passwordMin'),
   confirmation: z.string(),
 }).refine((values) => values.password === values.confirmation, {
-  message: 'Las contraseñas no coinciden.',
+  message: 'passwordMismatch',
   path: ['confirmation'],
 })
 
 function CreateVaultPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const vault = useVaultSession()
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
@@ -24,7 +26,8 @@ function CreateVaultPage() {
     event.preventDefault()
     const parsed = createSchema.safeParse({ password, confirmation })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Revisa los datos.')
+      const message = parsed.error.issues[0]?.message ?? 'reviewData'
+      setError(t(message as never))
       return
     }
     setError('')
@@ -33,7 +36,7 @@ function CreateVaultPage() {
       await vault.create(password)
       navigate('/boveda')
     } catch {
-      setError('No se pudo crear la bóveda.')
+      setError(t('createVaultError'))
     } finally {
       setBusy(false)
       setPassword('')
@@ -44,15 +47,12 @@ function CreateVaultPage() {
   return (
     <section className="page-section form-section">
       <div className="form-intro">
-        <p className="eyebrow">Nuevo archivo</p>
-        <h1>Crear un archivo local</h1>
-        <p>
-          Define una contraseña para proteger tu archivo. La contraseña no se
-          guarda y no se puede recuperar.
-        </p>
+        <p className="eyebrow">{t('newFile')}</p>
+        <h1>{t('createLocalFile')}</h1>
+        <p>{t('createFileDescription')}</p>
       </div>
       <form className="vault-form" onSubmit={handleSubmit} noValidate>
-        <label htmlFor="password">Contraseña</label>
+        <label htmlFor="password">{t('password')}</label>
         <Input
           id="password"
           name="password"
@@ -63,9 +63,9 @@ function CreateVaultPage() {
           minLength={8}
           required
         />
-        <p className="field-help">Mínimo 8 caracteres.</p>
+        <p className="field-help">{t('minimumPassword')}</p>
 
-        <label htmlFor="password-confirmation">Confirmar contraseña</label>
+        <label htmlFor="password-confirmation">{t('passwordConfirmation')}</label>
         <Input
           id="password-confirmation"
           name="password-confirmation"
@@ -83,10 +83,10 @@ function CreateVaultPage() {
         )}
         <div className="form-actions">
           <Button className="button button-primary" type="submit" loading={busy} disabled={busy}>
-            Crear bóveda
+            {t('createVault')}
           </Button>
           <Link className="text-link" to="/">
-            Volver al inicio
+            {t('backHome')}
           </Link>
         </div>
       </form>

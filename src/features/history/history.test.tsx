@@ -39,8 +39,8 @@ describe('monthly history', () => {
   it('offers opening the vault while locked', () => {
     const session = new VaultSession({ createClient: () => clientFor(() => undefined) })
     renderHistory(session)
-    expect(screen.getByRole('heading', { name: 'Abrí la bóveda para ver tus meses.' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Abrir archivo' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Open a file to continue.' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open file' })).toBeVisible()
   })
 
   it('loads rows in backend order and expands archived category details', async () => {
@@ -52,19 +52,19 @@ describe('monthly history', () => {
     await session.create('test-password')
     renderHistory(session)
 
-    const table = await screen.findByRole('table', { name: 'Historial mensual' })
+    const table = await screen.findByRole('table', { name: 'Monthly history' })
     const rows = within(table).getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('septiembre de 2026')
-    expect(rows[2]).toHaveTextContent('agosto de 2026')
-    expect(within(rows[1]).getByRole('link', { name: 'Volver al mes' })).toHaveAttribute('href', '/boveda?month=month-2')
-    expect(table).toHaveTextContent('-$ 100,00')
+    expect(rows[1]).toHaveTextContent('September 2026')
+    expect(rows[2]).toHaveTextContent('August 2026')
+    expect(within(rows[1]).getByRole('link', { name: 'Back to month' })).toHaveAttribute('href', '/boveda?month=month-2')
+    expect(table).toHaveTextContent('-$ 100.00')
     expect(calls).toContainEqual({ kind: 'history.list' })
 
-    const expand = within(rows[1]).getByRole('button', { name: /desglose/ })
+    const expand = within(rows[1]).getByRole('button', { name: /breakdown/ })
     await userEvent.setup().click(expand)
-    expect(screen.getByRole('table', { name: 'Categorías de septiembre de 2026' })).toHaveTextContent('Comida vieja')
-    expect(screen.getByText('Archivada')).toBeVisible()
-    expect(within(rows[1]).getByRole('button', { name: /desglose/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('table', { name: 'Category September 2026' })).toHaveTextContent('Comida vieja')
+    expect(screen.getByText('Archived')).toBeVisible()
+    expect(within(rows[1]).getByRole('button', { name: /breakdown/ })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('does not present an empty state when history loading fails', async () => {
@@ -74,7 +74,7 @@ describe('monthly history', () => {
     }) })
     await session.create('test-password')
     renderHistory(session)
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar el historial.')
-    expect(screen.queryByRole('heading', { name: 'Todavía no hay meses' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('The history could not be loaded.')
+    expect(screen.queryByRole('heading', { name: 'There are no months yet' })).not.toBeInTheDocument()
   })
 })

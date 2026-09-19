@@ -312,9 +312,9 @@ describe('vault UI', () => {
     const user = userEvent.setup()
     const session = new VaultSession({ createClient: () => fakeClient() })
     renderCreate(session)
-    await user.type(screen.getByLabelText('Contraseña'), 'password-1')
-    await user.type(screen.getByLabelText('Confirmar contraseña'), 'password-1')
-    await user.click(screen.getByRole('button', { name: 'Crear bóveda' }))
+    await user.type(screen.getByLabelText('Password'), 'password-1')
+    await user.type(screen.getByLabelText('Confirm password'), 'password-1')
+    await user.click(screen.getByRole('button', { name: 'Create vault' }))
     await waitFor(() => expect(session.getSnapshot().status).toBe('unlocked'))
   })
 

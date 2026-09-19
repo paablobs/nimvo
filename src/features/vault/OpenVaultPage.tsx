@@ -2,14 +2,12 @@ import { Button, Input } from '@chakra-ui/react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useVaultSession } from './useVaultSession.ts'
-import {
-  INVALID_NIMVO_FILE_MESSAGE,
-  NimvoCryptoError,
-  UNSUPPORTED_NIMVO_VERSION_MESSAGE,
-} from '../../crypto/index.ts'
+import { NimvoCryptoError } from '../../crypto/index.ts'
+import { useI18n } from '../../i18n/useI18n.ts'
 
 function OpenVaultPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const vault = useVaultSession()
   const [password, setPassword] = useState('')
   const [fileName, setFileName] = useState('')
@@ -20,7 +18,7 @@ function OpenVaultPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!file) {
-      setError('Selecciona un archivo .nimvo o .moneo.')
+      setError(t('selectFile'))
       return
     }
     setError('')
@@ -30,9 +28,7 @@ function OpenVaultPage() {
       await vault.open(bytes, password)
       navigate('/boveda')
     } catch (caught) {
-      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
-        ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
-        : INVALID_NIMVO_FILE_MESSAGE)
+      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION' ? t('unsupportedVersion') : t('openError'))
     } finally {
       setBusy(false)
       setPassword('')
@@ -46,9 +42,7 @@ function OpenVaultPage() {
       const opened = await vault.openFromPicker(password)
       if (opened) navigate('/boveda')
     } catch (caught) {
-      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION'
-        ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
-        : INVALID_NIMVO_FILE_MESSAGE)
+      setError(caught instanceof NimvoCryptoError && caught.code === 'UNSUPPORTED_VERSION' ? t('unsupportedVersion') : t('openError'))
     } finally {
       setBusy(false)
       setPassword('')
@@ -58,23 +52,18 @@ function OpenVaultPage() {
   return (
     <section className="page-section form-section">
       <div className="form-intro">
-        <p className="eyebrow">Abrir archivo</p>
-        <h1>Continuar con un archivo local</h1>
-        <p>
-          Selecciona una copia de Nimvo desde este dispositivo y escribe su
-          contraseña. La contraseña no se guarda.
-        </p>
-        <p className="local-note">
-          El acceso directo vincula el archivo a esta pestaña cuando el navegador lo permite. En Firefox y otros navegadores se usa la selección manual y la descarga.
-        </p>
+        <p className="eyebrow">{t('openFileTitle')}</p>
+        <h1>{t('continueLocalFile')}</h1>
+        <p>{t('openDescription')}</p>
+        <p className="local-note">{t('directAccessNote')}</p>
       </div>
       <form className="vault-form file-picker" onSubmit={handleSubmit} noValidate>
         {vault.directFileAccessSupported && (
           <Button className="button button-secondary" type="button" onClick={chooseWithSystem} loading={busy} disabled={busy}>
-            Elegir con el sistema
+            {t('chooseWithSystem')}
           </Button>
         )}
-        <label htmlFor="vault-file">Archivo de Nimvo</label>
+        <label htmlFor="vault-file">{t('nimvoFile')}</label>
         <input
           id="vault-file"
           type="file"
@@ -86,8 +75,8 @@ function OpenVaultPage() {
             setError('')
           }}
         />
-        {fileName && <p role="status">Seleccionado: {fileName}</p>}
-        <label htmlFor="open-password">Contraseña</label>
+        {fileName && <p role="status">{t('selected', { name: fileName })}</p>}
+        <label htmlFor="open-password">{t('password')}</label>
         <Input
           id="open-password"
           name="password"
@@ -97,13 +86,13 @@ function OpenVaultPage() {
           autoComplete="current-password"
           required
         />
-        <p className="field-help">Formatos: .nimvo (nuevo) y .moneo (compatibilidad).</p>
+        <p className="field-help">{t('formats')}</p>
         {error && <p className="form-message error" role="alert">{error}</p>}
         <div className="form-actions">
           <Button className="button button-primary" type="submit" loading={busy} disabled={busy}>
-            Abrir bóveda
+            {t('openVault')}
           </Button>
-          <Link className="text-link" to="/">Volver al inicio</Link>
+          <Link className="text-link" to="/">{t('backHome')}</Link>
         </div>
       </form>
     </section>

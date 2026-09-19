@@ -1,5 +1,5 @@
 import { Button, Input } from '@chakra-ui/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import AccessibleDialog from '../../components/AccessibleDialog.tsx'
 import { isValidCivilDate } from '../../domain/dates.ts'
@@ -7,6 +7,8 @@ import type { Category, Expense } from '../../domain/types.ts'
 import { formatMoney, parseMoneyToCents, sumCents } from '../../domain/money.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
 import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
+import { reformatArsMoneyInput } from '../../components/arsMoneyInput.ts'
+import { useI18n } from '../../i18n/useI18n.ts'
 
 const expenseSchema = z.object({
   spentOn: z.string().refine(isValidCivilDate, 'La fecha no es válida.'),
@@ -44,6 +46,7 @@ const sortExpenses = (expenses: Expense[]): Expense[] => [...expenses].sort((lef
 
 export default function ExpensesPanel({ monthId, year, month, expenses, categories, onRefresh, onCategoriesRefresh }: Props) {
   const vault = useVaultSession()
+  const { t, numberFormat } = useI18n()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newCategory, setNewCategory] = useState(false)
@@ -52,6 +55,12 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [optimisticCategory, setOptimisticCategory] = useState<Category | null>(null)
+  const previousNumberFormat = useRef(numberFormat)
+  useEffect(() => {
+    if (previousNumberFormat.current === numberFormat) return
+    setDraft((current) => current ? { ...current, amount: reformatArsMoneyInput(current.amount, false, previousNumberFormat.current, numberFormat) } : current)
+    previousNumberFormat.current = numberFormat
+  }, [numberFormat])
   const visibleCategories = useMemo(() => optimisticCategory && !categories.some((category) => category.id === optimisticCategory.id) ? [...categories, optimisticCategory] : categories, [categories, optimisticCategory])
   const categoryById = useMemo(() => new Map(visibleCategories.map((category) => [category.id, category])), [visibleCategories])
   const activeCategories = visibleCategories.filter((category) => !category.isArchived)
@@ -74,7 +83,7 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
 
   function startEdit(expense: Expense) {
     setEditingId(expense.id)
-    setDraft({ spentOn: expense.spentOn, categoryId: expense.categoryId, amount: formatMoney(expense.amountCents, { symbol: false }), description: expense.description ?? '' })
+    setDraft({ spentOn: expense.spentOn, categoryId: expense.categoryId, amount: formatMoney(expense.amountCents, { symbol: false, locale: numberFormat }), description: expense.description ?? '' })
     setNewCategory(false)
     setError('')
   }
@@ -83,9 +92,9 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
     event.preventDefault()
     if (!draft) return
     const parsed = expenseSchema.safeParse(draft)
-    const amount = parseMoneyToCents(draft.amount)
+    const amount = parseMoneyToCents(draft.amount, numberFormat)
     if (!parsed.success || amount === null || amount <= 0) {
-      setError(parsed.success ? 'El importe debe ser mayor que cero.' : parsed.error.issues[0]?.message ?? 'Revisá los datos.')
+      setError(parsed.success ? t('expenseMustBePositive') : t('reviewData'))
       return
     }
     setBusy(true)
@@ -95,12 +104,12 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
       else await vault.operation({ kind: 'expenses.create', input: { monthId, ...input } })
       setDraft(null)
       await onRefresh()
-    } catch { setError('No se pudo guardar el gasto.') } finally { setBusy(false) }
+    } catch { setError(t('saveExpenseError')) } finally { setBusy(false) }
   }
 
   async function createCategory() {
     const parsed = categorySchema.safeParse({ name: categoryName })
-    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? 'Revisá el nombre.'); return }
+    if (!parsed.success) { setError(t('reviewData')); return }
     setBusy(true)
     try {
       const category = await vault.operation<Category>({ kind: 'categories.create', input: { name: parsed.data.name, colorToken: null, isArchived: false } })
@@ -110,29 +119,29 @@ export default function ExpensesPanel({ monthId, year, month, expenses, categori
       setCategoryName('')
       setNewCategory(false)
       setError('')
-    } catch { setError('No se pudo crear la categoría.') } finally { setBusy(false) }
+    } catch { setError(t('categoryError')) } finally { setBusy(false) }
   }
 
   async function remove() {
     if (!deleteId) return
     setBusy(true)
-    try { await vault.operation({ kind: 'expenses.delete', id: deleteId }); setDeleteId(null); await onRefresh() } catch { setError('No se pudo eliminar el gasto.') } finally { setBusy(false) }
+    try { await vault.operation({ kind: 'expenses.delete', id: deleteId }); setDeleteId(null); await onRefresh() } catch { setError(t('deleteExpenseError')) } finally { setBusy(false) }
   }
 
   return <section className="panel expenses-panel" aria-labelledby="expenses-title">
-    <div className="section-heading"><div><p className="eyebrow">Desembolsos</p><h2 id="expenses-title">Gastos del mes</h2></div><Button className="button button-secondary" type="button" onClick={startCreate} disabled={busy}>Nuevo gasto</Button></div>
+    <div className="section-heading"><div><p className="eyebrow">{t('expensesEyebrow')}</p><h2 id="expenses-title">{t('monthlyExpenses')}</h2></div><Button className="button button-secondary" type="button" onClick={startCreate} disabled={busy}>{t('newExpense')}</Button></div>
     {draft && <form className="inline-form expense-form" onSubmit={submit} noValidate>
-      <label htmlFor="expense-date">Fecha <Input id="expense-date" data-dialog-autofocus type="date" value={draft.spentOn} onChange={(event) => setDraft((current) => current ? { ...current, spentOn: event.target.value } : current)} disabled={busy} /></label>
-      <label htmlFor="expense-category">Categoría <select id="expense-category" value={draft.categoryId} onChange={(event) => setDraft((current) => current ? { ...current, categoryId: event.target.value } : current)} disabled={busy}><option value="" disabled>Elegí una categoría</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}{category.isArchived ? ' (archivada)' : ''}</option>)}</select></label>
-      <Button className="button button-small category-inline-trigger" type="button" onClick={() => setNewCategory((current) => !current)} disabled={busy}>{newCategory ? 'Cancelar categoría' : 'Nueva categoría'}</Button>
-      {newCategory && <div className="inline-category-form"><label htmlFor="expense-new-category">Nombre de categoría <Input id="expense-new-category" autoFocus value={categoryName} onChange={(event) => setCategoryName(event.target.value)} disabled={busy} /></label><Button className="button button-small button-primary" type="button" onClick={createCategory} loading={busy} disabled={busy}>Crear y usar</Button></div>}
-      <label htmlFor="expense-amount">Monto (ARS) <ArsMoneyInput id="expense-amount" value={draft.amount} onChange={(event) => setDraft((current) => current ? { ...current, amount: event.target.value } : current)} disabled={busy} /></label>
-      <label htmlFor="expense-description">Descripción (opcional) <Input id="expense-description" value={draft.description} onChange={(event) => setDraft((current) => current ? { ...current, description: event.target.value } : current)} disabled={busy} /></label>
-      <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>Guardar gasto</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>Cancelar</Button></div>
+      <label htmlFor="expense-date">{t('date')} <Input id="expense-date" data-dialog-autofocus type="date" value={draft.spentOn} onChange={(event) => setDraft((current) => current ? { ...current, spentOn: event.target.value } : current)} disabled={busy} /></label>
+      <label htmlFor="expense-category">{t('category')} <select id="expense-category" value={draft.categoryId} onChange={(event) => setDraft((current) => current ? { ...current, categoryId: event.target.value } : current)} disabled={busy}><option value="" disabled>{t('chooseCategory')}</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}{category.isArchived ? ` (${t('archived').toLowerCase()})` : ''}</option>)}</select></label>
+      <Button className="button button-small category-inline-trigger" type="button" onClick={() => setNewCategory((current) => !current)} disabled={busy}>{newCategory ? t('cancelCategory') : t('newCategory')}</Button>
+      {newCategory && <div className="inline-category-form"><label htmlFor="expense-new-category">{t('categoryName')} <Input id="expense-new-category" autoFocus value={categoryName} onChange={(event) => setCategoryName(event.target.value)} disabled={busy} /></label><Button className="button button-small button-primary" type="button" onClick={createCategory} loading={busy} disabled={busy}>{t('createAndUse')}</Button></div>}
+      <label htmlFor="expense-amount">{t('amountArs')} <ArsMoneyInput locale={numberFormat} id="expense-amount" value={draft.amount} onChange={(event) => setDraft((current) => current ? { ...current, amount: event.target.value } : current)} disabled={busy} /></label>
+      <label htmlFor="expense-description">{t('description')} ({t('optional')}) <Input id="expense-description" value={draft.description} onChange={(event) => setDraft((current) => current ? { ...current, description: event.target.value } : current)} disabled={busy} /></label>
+      <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>{t('saveExpense')}</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>{t('cancel')}</Button></div>
     </form>}
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {expenses.length === 0 ? <p className="empty-note">Todavía no hay gastos en este mes.</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">Gastos del mes</caption><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th className="amount-cell">Monto</th><th>Acciones</th></tr></thead><tbody>{sortExpenses(expenses).map((expense) => <tr key={expense.id}><td>{expense.spentOn}</td><td>{categoryById.get(expense.categoryId)?.name ?? 'Categoría archivada'}</td><td>{expense.description ?? 'Sin descripción'}</td><td className="amount-cell">{formatMoney(expense.amountCents)}</td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => startEdit(expense)} disabled={busy}>Editar</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(expense.id)} disabled={busy}>Eliminar</Button></td></tr>)}</tbody></table></div>}
-    <aside className="expense-summary" aria-label="Resumen por categoría"><div className="section-heading"><h3>Resumen por categoría</h3><strong>{formatMoney(total)}</strong></div>{categoryTotals.size === 0 ? <p className="empty-note">Sin gastos para resumir.</p> : <ul>{Array.from(categoryTotals.entries()).map(([categoryId, amount]) => <li key={categoryId}><span>{categoryById.get(categoryId)?.name ?? 'Categoría archivada'}</span><strong>{formatMoney(amount)}</strong></li>)}</ul>}</aside>
-    {deleteId && <AccessibleDialog titleId="delete-expense-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-expense-title">¿Eliminar este gasto?</strong><p>La acción no se puede deshacer.</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>Eliminar</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>Cancelar</Button></div></div></AccessibleDialog>}
+    {expenses.length === 0 ? <p className="empty-note">{t('noExpenses')}</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">{t('monthlyExpenses')}</caption><thead><tr><th>{t('date')}</th><th>{t('category')}</th><th>{t('description')}</th><th className="amount-cell">{t('amount')}</th><th>{t('templateActions')}</th></tr></thead><tbody>{sortExpenses(expenses).map((expense) => <tr key={expense.id}><td>{expense.spentOn}</td><td>{categoryById.get(expense.categoryId)?.name ?? t('archivedCategory')}</td><td>{expense.description ?? t('noDescription')}</td><td className="amount-cell">{formatMoney(expense.amountCents, { locale: numberFormat })}</td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => startEdit(expense)} disabled={busy}>{t('edit')}</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(expense.id)} disabled={busy}>{t('delete')}</Button></td></tr>)}</tbody></table></div>}
+    <aside className="expense-summary" aria-label={t('categorySummary')}><div className="section-heading"><h3>{t('categorySummary')}</h3><strong>{formatMoney(total, { locale: numberFormat })}</strong></div>{categoryTotals.size === 0 ? <p className="empty-note">{t('noExpensesSummary')}</p> : <ul>{Array.from(categoryTotals.entries()).map(([categoryId, amount]) => <li key={categoryId}><span>{categoryById.get(categoryId)?.name ?? t('archivedCategory')}</span><strong>{formatMoney(amount, { locale: numberFormat })}</strong></li>)}</ul>}</aside>
+    {deleteId && <AccessibleDialog titleId="delete-expense-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-expense-title">{t('deleteExpenseTitle')}</strong><p>{t('undoWarning')}</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>{t('delete')}</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>{t('cancel')}</Button></div></div></AccessibleDialog>}
   </section>
 }

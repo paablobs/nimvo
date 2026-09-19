@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import ArsMoneyInput from './ArsMoneyInput.tsx'
-import { normalizeArsMoneyInput, sanitizeArsMoneyInput } from './arsMoneyInput.ts'
+import { normalizeArsMoneyInput, reformatArsMoneyInput, sanitizeArsMoneyInput } from './arsMoneyInput.ts'
 
 describe('ArsMoneyInput', () => {
   it('caps fractions at two digits and formats valid values on blur', async () => {
@@ -28,5 +28,15 @@ describe('ArsMoneyInput', () => {
     expect(sanitizeArsMoneyInput('100.2567')).toBe('100.25')
     expect(normalizeArsMoneyInput('-100,25', true)).toBe('-100,25')
     expect(normalizeArsMoneyInput('125,')).toBe('125,00')
+  })
+
+  it('accepts a draft from either canonical separator convention after a format switch', () => {
+    expect(normalizeArsMoneyInput('1,234.56', false, 'es-AR')).toBe('1.234,56')
+    expect(normalizeArsMoneyInput('1.234,56', false, 'en-US')).toBe('1,234.56')
+  })
+
+  it('uses the previous format when converting ambiguous grouped values', () => {
+    expect(reformatArsMoneyInput('1,234', false, 'en-US', 'es-AR')).toBe('1.234,00')
+    expect(reformatArsMoneyInput('1.234', false, 'es-AR', 'en-US')).toBe('1,234.00')
   })
 })

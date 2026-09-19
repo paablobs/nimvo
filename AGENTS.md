@@ -47,7 +47,7 @@ React components must not run SQL or access `LocalDatabase` directly. Add typed 
 ### Money and dates
 
 - Represent money as safe integer cents. Never use floating-point values for amounts.
-- Reuse `src/domain/money.ts` to parse, add, and format ARS values using the `es-AR` format.
+- Reuse `src/domain/money.ts` to parse, add, and format ARS values as safe integer cents. The active presentation format may be `en-US` or `es-AR`; parsers accept both canonical separator conventions.
 - Civil dates use `YYYY-MM-DD` and have no time-zone semantics. Timestamps are ISO-8601 instants.
 - The monthly balance subtracts every debt, whether paid or unpaid. Marking a debt as paid changes only the outstanding debt total.
 
@@ -75,10 +75,10 @@ React components must not run SQL or access `LocalDatabase` directly. Add typed 
 
 ### User interface
 
-- User-facing copy is in Spanish.
+- User-facing copy supports English (the default) and Spanish. Keep translations in the typed i18n catalog and expose preferences from the header.
 - Use semantic HTML, accessible names, and keyboard navigation. Start dialogs from `AccessibleDialog`.
 - Check tables and dialogs at mobile widths. Wide tables must retain usable horizontal scrolling.
-- `localStorage` stores only the theme. Do not persist financial data, passwords, keys, or SQLite data outside the encrypted file.
+- `localStorage` stores only presentation preferences: theme, language (`nimvo-language`), and number format (`nimvo-number-format`). Do not persist financial data, passwords, keys, or SQLite data outside the encrypted file.
 
 ## Tests
 

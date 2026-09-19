@@ -1,32 +1,30 @@
 import { Link } from 'react-router-dom'
+import { useI18n } from '../../i18n/useI18n.ts'
 
 function LandingPage() {
+  const { t } = useI18n()
   return (
     <section className="landing page-section">
       <div className="landing-copy">
-      <p className="eyebrow">Nimvo / archivo local</p>
-        <h1>Tu dinero, en una hoja clara.</h1>
-        <p className="lede">
-          Nimvo es una herramienta de finanzas personales que empieza por lo
-          esencial: un archivo que vive en tu dispositivo.
-        </p>
+      <p className="eyebrow">{t('localFile')}</p>
+        <h1>{t('landingTitle')}</h1>
+        <p className="lede">{t('landingLead')}</p>
         <div className="action-row">
           <Link className="button button-primary" to="/crear">
-            Crear archivo
+            {t('createFileAction')}
           </Link>
           <Link className="button button-secondary" to="/abrir">
-            Abrir archivo
+            {t('openFileAction')}
           </Link>
         </div>
         <p className="local-note">
-          Tus datos se guardarán localmente. La exportación permitirá llevarte
-          una copia cifrada cuando la guardes.
+          {t('localDataNote')}
         </p>
       </div>
-      <aside className="landing-aside" aria-label="Estado de la versión">
-        <span className="aside-label">Versión actual</span>
-        <strong>Nimvo V1</strong>
-        <p>Registra meses, gastos fijos y gastos, y conserva tu historial en un archivo local cifrado.</p>
+      <aside className="landing-aside" aria-label={t('currentVersion')}>
+        <span className="aside-label">{t('currentVersion')}</span>
+        <strong>Nimvo V2</strong>
+        <p>{t('versionDescription')}</p>
       </aside>
     </section>
   )

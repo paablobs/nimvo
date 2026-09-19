@@ -3,22 +3,37 @@ import { expect, test } from '@playwright/test'
 test('landing page offers the current file actions', async ({ page }) => {
   await page.goto('/')
 
-  await expect(page.getByRole('heading', { name: 'Tu dinero, en una hoja clara.' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Crear archivo' }).first()).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Abrir archivo' }).first()).toBeVisible()
-  await expect(page.getByText('guardarán localmente')).toBeVisible()
-  await expect(page.getByText('Nimvo V1')).toBeVisible()
-  await expect(page.getByText('Fase 2')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Your money, on a clear sheet.' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Create file' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Open file' }).first()).toBeVisible()
+  await expect(page.getByText('Your data stays local')).toBeVisible()
+  await expect(page.getByText('Nimvo · V2')).toBeVisible()
+  await expect(page.getByText('Phase 2')).toHaveCount(0)
 })
 
-test('theme toggle updates and persists the selected theme', async ({ page }) => {
+test('preferences menu updates and persists the selected theme', async ({ page }) => {
   await page.goto('/')
-  const toggle = page.getByRole('button', { name: 'Cambiar a tema oscuro' })
+  await page.getByRole('button', { name: 'Preferences' }).click()
+  const toggle = page.getByRole('button', { name: 'Dark' })
 
   await toggle.click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.reload()
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.getByRole('button', { name: 'Cambiar a tema claro' })).toBeVisible()
+  await page.getByRole('button', { name: 'Preferences' }).click()
+  await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('preferences persist Spanish and an independent number format', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Preferences' }).click()
+  await page.getByRole('dialog', { name: 'Preferences' }).getByRole('button', { name: 'ES', exact: true }).click()
+  await page.getByRole('button', { name: 'Preferencias' }).click()
+  await page.getByRole('dialog', { name: 'Preferencias' }).getByRole('button', { name: '1.234,56', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Tu dinero, en una hoja clara.' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Tu dinero, en una hoja clara.' })).toBeVisible()
+  await page.getByRole('button', { name: 'Preferencias' }).click()
+  await expect(page.getByRole('button', { name: '1.234,56' })).toHaveAttribute('aria-pressed', 'true')
 })
