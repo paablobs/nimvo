@@ -7,6 +7,7 @@ import OpenVaultPage from '../features/vault/OpenVaultPage.tsx'
 import VaultHomePage from '../features/vault/VaultHomePage.tsx'
 import HistoryPage from '../features/history/HistoryPage.tsx'
 import { VaultProvider } from '../features/vault/VaultProvider.tsx'
+import VaultInactivityLock from '../features/vault/VaultInactivityLock.tsx'
 import SeoMetadata from './SeoMetadata.tsx'
 import { I18nProvider } from '../i18n/i18n.tsx'
 import { useI18n } from '../i18n/useI18n.ts'
@@ -29,6 +30,7 @@ function NimvoApp() {
     <I18nProvider>
       <VaultProvider>
         <BrowserRouter basename={routerBaseName}>
+          <VaultInactivityLock />
           <SeoMetadata />
           <Routes>
             <Route element={<Layout />}>

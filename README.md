@@ -16,6 +16,7 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Comparar meses y desplegar su desglose por categoría.
 - Guardar el archivo en una ubicación elegida o descargar una copia.
 - Avisar cuando hay cambios sin guardar antes de cerrar la pestaña.
+- Bloquear automáticamente la bóveda después de 15 minutos sin actividad, incluso si hay cambios sin guardar.
 - Alternar entre tema claro y oscuro.
 
 La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. ARS puede mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
@@ -215,6 +216,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Create, rename, and archive expense categories.
 - Review expenses by category and compare monthly history.
 - Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
+- Automatically lock the vault after 15 minutes without activity, even when there are unsaved changes.
 - Warn about unsaved changes and switch between light and dark themes.
 
 Amounts use ARS and can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
