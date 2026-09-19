@@ -132,7 +132,7 @@ describe('monthly workspace', () => {
     await user.type(screen.getByLabelText('Month'), String(month.month))
     await user.click(screen.getByRole('button', { name: 'Create month' }))
     expect(screen.getByRole('alert')).toHaveTextContent('That month already exists.')
-    expect(operation).not.toHaveBeenCalled()
+    expect(operation).toHaveBeenCalledTimes(1)
     expect(onCreated).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -147,7 +147,7 @@ describe('monthly workspace', () => {
     await user.type(screen.getByLabelText('Amount (ARS)'), '1000000000')
     await user.click(screen.getByRole('button', { name: 'Create month' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a valid year, month, and income.')
-    expect(operation).not.toHaveBeenCalled()
+    expect(operation).toHaveBeenCalledTimes(1)
   })
 
   it('calculates summary and refreshes it when a debt is paid', async () => {

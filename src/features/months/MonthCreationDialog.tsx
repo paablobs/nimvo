@@ -4,7 +4,8 @@ import { z } from 'zod'
 import AccessibleDialog from '../../components/AccessibleDialog.tsx'
 import type { Month, RecurringDebtTemplate } from '../../domain/types.ts'
 import { adjustDueDayToMonth, isValidCivilDate } from '../../domain/dates.ts'
-import { parseMoneyToCents, formatMoney } from '../../domain/money.ts'
+import { parseMoneyToCents, formatCurrency } from '../../domain/money.ts'
+import { DEFAULT_CURRENCY, type CurrencyCode } from '../../domain/currency.ts'
 import { parseSignedMoneyToCents } from './money.ts'
 import { useVaultSession } from '../vault/useVaultSession.ts'
 import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
@@ -47,11 +48,12 @@ function dateForPeriod(date: string, year: number, month: number): string {
 interface Props {
   existingMonths?: ExistingMonth[]
   templates: RecurringDebtTemplate[]
+  currency?: CurrencyCode
   onClose: () => void
   onCreated: (month: MonthCreated) => Promise<void>
 }
 
-export default function MonthCreationDialog({ existingMonths = [], templates, onClose, onCreated }: Props) {
+export default function MonthCreationDialog({ existingMonths = [], templates, currency = DEFAULT_CURRENCY, onClose, onCreated }: Props) {
   const vault = useVaultSession()
   const { locale, numberFormat, t } = useI18n()
   const today = useMemo(() => new Date(), [])
@@ -59,12 +61,12 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
   const [month, setMonth] = useState(today.getMonth() + 1)
   const defaultPrevious = previousMonthFor(existingMonths, today.getFullYear(), today.getMonth() + 1)
   const [incomeMode, setIncomeMode] = useState<'previous' | 'manual'>(defaultPrevious ? 'previous' : 'manual')
-  const [initialAmount, setInitialAmount] = useState(defaultPrevious ? formatMoney(defaultPrevious.initialAmountCents, { symbol: false, locale: numberFormat }) : '0')
+  const [initialAmount, setInitialAmount] = useState(defaultPrevious ? formatCurrency(defaultPrevious.initialAmountCents, currency, { symbol: false, locale: numberFormat }) : '0')
   const previous = useMemo(() => previousMonthFor(existingMonths, year, month), [existingMonths, year, month])
   const [choices, setChoices] = useState<Record<string, TemplateChoice>>(() => Object.fromEntries(
     templates.filter((template) => template.isActive).map((template) => [template.id, {
       selected: true,
-      amount: template.defaultAmountCents && template.defaultAmountCents > 0 ? formatMoney(template.defaultAmountCents, { symbol: false, locale: numberFormat }) : '',
+      amount: template.defaultAmountCents && template.defaultAmountCents > 0 ? formatCurrency(template.defaultAmountCents, currency, { symbol: false, locale: numberFormat }) : '',
       dueDate: dateForTemplate(template, today.getFullYear(), today.getMonth() + 1),
       dueDateCustom: false,
     }]),
@@ -91,13 +93,13 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
     if (!nextPrevious) {
       setIncomeMode('manual')
     } else if (incomeMode === 'previous') {
-      setInitialAmount(formatMoney(nextPrevious.initialAmountCents, { symbol: false, locale: numberFormat }))
+      setInitialAmount(formatCurrency(nextPrevious.initialAmountCents, currency, { symbol: false, locale: numberFormat }))
     }
     setChoices((current) => Object.fromEntries(templates.filter((template) => template.isActive).map((template) => {
       const previous = current[template.id]
       return [template.id, {
         selected: previous?.selected ?? true,
-        amount: previous?.amount || (template.defaultAmountCents && template.defaultAmountCents > 0 ? formatMoney(template.defaultAmountCents, { symbol: false, locale: numberFormat }) : ''),
+        amount: previous?.amount || (template.defaultAmountCents && template.defaultAmountCents > 0 ? formatCurrency(template.defaultAmountCents, currency, { symbol: false, locale: numberFormat }) : ''),
         dueDate: previous?.dueDateCustom && previous.dueDate
           ? dateForPeriod(previous.dueDate, nextYear, nextMonth)
           : previous?.dueDateCustom ? null : dateForTemplate(template, nextYear, nextMonth),
@@ -148,7 +150,7 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
     try {
       const result = await vault.operation<{ month: MonthCreated; debts: unknown[] }>({
         kind: 'months.createWithTemplates',
-        input: { year, month, initialAmountCents: cents, currency: 'ARS' },
+        input: { year, month, initialAmountCents: cents },
         templateIds,
       } as never)
       await onCreated(result.month)
@@ -175,9 +177,9 @@ export default function MonthCreationDialog({ existingMonths = [], templates, on
           </div>
           <fieldset className="income-choice">
             <legend>{t('income')}</legend>
-            {previous && <label><input type="radio" name="income-mode" value="previous" checked={incomeMode === 'previous'} onChange={() => { setIncomeMode('previous'); setInitialAmount(formatMoney(previous.initialAmountCents, { symbol: false, locale: numberFormat })) }} /> {t('repeatPreviousIncome', { amount: formatMoney(previous.initialAmountCents, { locale: numberFormat }) })}</label>}
+            {previous && <label><input type="radio" name="income-mode" value="previous" checked={incomeMode === 'previous'} onChange={() => { setIncomeMode('previous'); setInitialAmount(formatCurrency(previous.initialAmountCents, currency, { symbol: false, locale: numberFormat })) }} /> {t('repeatPreviousIncome', { amount: formatCurrency(previous.initialAmountCents, currency, { locale: numberFormat }) })}</label>}
             <label><input type="radio" name="income-mode" value="manual" checked={incomeMode === 'manual' || previous === undefined} onChange={() => setIncomeMode('manual')} /> {t('enterManualIncome')}</label>
-            <label htmlFor="month-initial">{t('amountArs')}</label>
+            <label htmlFor="month-initial">{t('amountCurrency', { currency })}</label>
             <ArsMoneyInput id="month-initial" allowNegative locale={numberFormat} value={initialAmount} disabled={incomeMode === 'previous' && previous !== undefined} onChange={(event) => setInitialAmount(event.target.value)} />
             <p className="field-help">{moneyHelpForFormat(locale, numberFormat)}</p>
           </fieldset>

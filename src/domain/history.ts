@@ -1,5 +1,6 @@
 import { addCents, isSafeSignedCents } from './money.ts'
 import type { Cents } from './types.ts'
+import type { CurrencyCode } from './currency.ts'
 
 export interface CategoryBreakdown {
   categoryId: string
@@ -12,7 +13,7 @@ export interface MonthlyHistoryRow {
   monthId: string
   year: number
   month: number
-  currency: string
+  currency: CurrencyCode
   initialAmountCents: Cents
   debtTotal: Cents
   debtPending: Cents

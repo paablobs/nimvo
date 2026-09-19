@@ -13,7 +13,7 @@ export interface Month {
   year: number
   month: number
   initialAmountCents: Cents
-  currency: string
+  currency: CurrencyCode
   createdAt: Timestamp
   updatedAt: Timestamp
 }
@@ -69,3 +69,4 @@ export interface ValidationSuccess {
 }
 
 export type ValidationResult = ValidationSuccess | ValidationError
+import type { CurrencyCode } from './currency.ts'

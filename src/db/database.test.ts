@@ -6,19 +6,22 @@ import { DebtsRepository } from './repositories/debts.ts'
 import { ExpensesRepository } from './repositories/expenses.ts'
 import { MonthsRepository } from './repositories/months.ts'
 import { TemplatesRepository } from './repositories/templates.ts'
+import { VaultRepository } from './repositories/vault.ts'
 import { replaceDatabase } from './worker/runtime.ts'
 import { calculateMonthlySummary } from '../domain/summary.ts'
+import { migrateInitial } from './migrations/001_initial.ts'
 
 const nodeCwd = (globalThis as typeof globalThis & { process?: { cwd(): string } }).process?.cwd() ?? '.'
 const wasmPath = `${nodeCwd}/node_modules/sql.js/dist/sql-wasm.wasm`
 const openDatabase = (bytes?: Uint8Array) => LocalDatabase.open(bytes, () => initSqlJs({ locateFile: () => wasmPath }))
 
-describe('local database v1', () => {
+describe('local database v2', () => {
   it('uses the exact schema and reopens exported bytes', async () => {
     const db = await openDatabase()
     expect(db.raw.exec('PRAGMA foreign_keys')[0].values[0][0]).toBe(1)
-    expect(db.raw.exec('PRAGMA user_version')[0].values[0][0]).toBe(1)
-    expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'schema_version'")[0].values[0][0]).toBe('1')
+    expect(db.raw.exec('PRAGMA user_version')[0].values[0][0]).toBe(2)
+    expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'schema_version'")[0].values[0][0]).toBe('2')
+    expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'currency'")[0].values[0][0]).toBe('ARS')
     expect(db.raw.exec("SELECT name FROM pragma_table_info('months')")[0].values.flat()).toEqual(['id', 'year', 'month', 'initial_amount_cents', 'currency', 'created_at', 'updated_at'])
     expect(db.raw.exec("SELECT name FROM pragma_index_list('expenses')")[0].values.flat()).toEqual(expect.arrayContaining(['idx_expenses_category_id', 'idx_expenses_month_spent_on']))
     const ids = (() => { let n = 0; return () => `id-${++n}` })()
@@ -150,5 +153,43 @@ describe('local database v1', () => {
     await expect(replaceDatabase(active, undefined, async () => { throw new Error('bad database') })).rejects.toThrow('bad database')
     expect(active.raw.exec('SELECT 1')[0].values[0][0]).toBe(1)
     active.close()
+  })
+
+  it('persists one vault currency and synchronizes existing months across export', async () => {
+    const db = await openDatabase()
+    const month = new MonthsRepository(db.raw).create(2026, 9, 100, 'month')
+    const vault = new VaultRepository(db.raw)
+    expect(vault.getCurrency()).toBe('ARS')
+    expect(vault.setCurrency('EUR')).toBe('EUR')
+    expect(vault.getCurrency()).toBe('EUR')
+    expect(new MonthsRepository(db.raw).getById(month.id)?.currency).toBe('EUR')
+    const reopened = await openDatabase(db.export())
+    expect(new VaultRepository(reopened.raw).getCurrency()).toBe('EUR')
+    expect(new MonthsRepository(reopened.raw).getById(month.id)?.currency).toBe('EUR')
+    db.close()
+    reopened.close()
+  })
+
+  it('migrates a published v1 database to the ARS vault default and reopens it', async () => {
+    const sql = await initSqlJs({ locateFile: () => wasmPath })
+    const legacy = new sql.Database()
+    migrateInitial(legacy)
+    legacy.run('PRAGMA user_version = 1')
+    legacy.run("INSERT INTO app_meta(key, value) VALUES ('schema_version', '1')")
+    legacy.run(`INSERT INTO months(id, year, month, initial_amount_cents, currency, created_at, updated_at)
+      VALUES ('legacy-usd', 2026, 1, 12345, 'USD', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`)
+    legacy.run(`INSERT INTO months(id, year, month, initial_amount_cents, currency, created_at, updated_at)
+      VALUES ('legacy-eur', 2026, 2, 67890, 'EUR', '2026-02-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z')`)
+
+    const migrated = await openDatabase(legacy.export())
+    expect(migrated.schemaVersion).toBe(2)
+    expect(new VaultRepository(migrated.raw).getCurrency()).toBe('ARS')
+    expect(new MonthsRepository(migrated.raw).list().every((month) => month.currency === 'ARS')).toBe(true)
+    const reopened = await openDatabase(migrated.export())
+    expect(new VaultRepository(reopened.raw).getCurrency()).toBe('ARS')
+    expect(new MonthsRepository(reopened.raw).list().map((month) => month.currency)).toEqual(['ARS', 'ARS'])
+    legacy.close()
+    migrated.close()
+    reopened.close()
   })
 })

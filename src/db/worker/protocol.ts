@@ -1,10 +1,13 @@
 import type { Category, NewCategory, NewDebt, NewExpense, NewMonthWithDebts, NewTemplate, NewTemplateDebt } from '../types.ts'
+import type { CurrencyCode } from '../../domain/currency.ts'
 
 export type DomainOperation =
+  | { kind: 'vault.getCurrency' }
+  | { kind: 'vault.setCurrency'; currency: CurrencyCode }
   | { kind: 'months.list' }
   | { kind: 'months.get'; id: string }
-  | { kind: 'months.create'; year: number; month: number; initialAmountCents: number; currency?: string; id?: string }
-  | { kind: 'months.update'; id: string; input: { year?: number; month?: number; initialAmountCents?: number; currency?: string } }
+  | { kind: 'months.create'; year: number; month: number; initialAmountCents: number; id?: string }
+  | { kind: 'months.update'; id: string; input: { year?: number; month?: number; initialAmountCents?: number } }
   | { kind: 'months.delete'; id: string }
   | { kind: 'months.createWithDebts'; input: Omit<NewMonthWithDebts, 'createdAt'> }
   | { kind: 'months.createWithTemplates'; input: Omit<NewMonthWithDebts, 'debts' | 'createdAt'>; templateIds: NewTemplateDebt[] }

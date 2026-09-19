@@ -1,4 +1,5 @@
 import type { Cents } from './types.ts'
+import { currencySymbol, DEFAULT_CURRENCY, type CurrencyCode } from './currency.ts'
 
 export type MoneyLocale = 'en-US' | 'es-AR'
 
@@ -119,7 +120,7 @@ function groupThousands(value: string, separator: '.' | ','): string {
 }
 
 /** Formats centavos as an ARS value using the es-AR separators. */
-export function formatMoney(cents: Cents, options: { symbol?: boolean; locale?: MoneyLocale } = {}): string {
+export function formatMoney(cents: Cents, options: { symbol?: boolean; locale?: MoneyLocale; currency?: CurrencyCode } = {}): string {
   if (typeof cents !== 'number' || !Number.isSafeInteger(cents)) {
     throw new RangeError('El importe debe ser un entero seguro en centavos')
   }
@@ -131,8 +132,11 @@ export function formatMoney(cents: Cents, options: { symbol?: boolean; locale?: 
   const grouping = locale === 'en-US' ? ',' : '.'
   const decimal = locale === 'en-US' ? '.' : ','
   const value = `${sign}${groupThousands(whole, grouping)}${decimal}${fraction}`
-  return options.symbol === false ? value : `${sign}$\u00a0${groupThousands(whole, grouping)}${decimal}${fraction}`
+  return options.symbol === false ? value : `${sign}${currencySymbol(options.currency ?? DEFAULT_CURRENCY)}\u00a0${groupThousands(whole, grouping)}${decimal}${fraction}`
 }
+
+export const formatCurrency = (cents: Cents, currency: CurrencyCode, options: { symbol?: boolean; locale?: MoneyLocale } = {}): string =>
+  formatMoney(cents, { ...options, currency })
 
 export const formatARS = formatMoney
 export const formatArs = formatMoney

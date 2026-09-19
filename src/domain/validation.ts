@@ -1,5 +1,6 @@
 import { isValidCivilDate } from './dates.ts'
 import { isSafeCents, isSafeSignedCents } from './money.ts'
+import { isCurrencyCode } from './currency.ts'
 import type { Category, Debt, Expense, Month, RecurringDebtTemplate, ValidationResult } from './types.ts'
 
 const ok = (): ValidationResult => ({ valid: true })
@@ -14,7 +15,7 @@ const safeInteger = (value: unknown): value is number => Number.isSafeInteger(va
 export function validateMonth(value: Partial<Month> | null | undefined): ValidationResult {
   if (!value || !id(value.id) || !safeInteger(value.year) || value.year < 1 || value.year > 9999 || !safeInteger(value.month) || value.month < 1 || value.month > 12) return fail('Mes inválido')
   if (!isSafeSignedCents(value.initialAmountCents)) return fail('Importe inicial inválido')
-  if (typeof value.currency !== 'string' || value.currency.trim() === '') return fail('Moneda inválida')
+  if (!isCurrencyCode(value.currency)) return fail('Moneda inválida')
   if (value.createdAt !== undefined && !isValidTimestamp(value.createdAt)) return fail('Marca temporal inválida')
   if (value.updatedAt !== undefined && !isValidTimestamp(value.updatedAt)) return fail('Marca temporal inválida')
   return ok()

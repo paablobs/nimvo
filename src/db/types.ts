@@ -14,7 +14,6 @@ export type NewMonthWithDebts = {
   year: number
   month: number
   initialAmountCents: number
-  currency?: string
   id?: string
   createdAt?: string
   debts?: Array<Omit<NewDebt, 'monthId'> & Partial<Pick<NewDebt, 'monthId'>>>

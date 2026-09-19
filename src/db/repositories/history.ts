@@ -1,6 +1,7 @@
 import type { Database } from 'sql.js'
 import { calculateMonthlyHistoryBalances, type CategoryBreakdown, type MonthlyHistoryRow } from '../../domain/history.ts'
 import { bool, queryRows, safeInteger, text } from './common.ts'
+import { parseCurrencyCode } from '../../domain/currency.ts'
 
 type HistoryQueryRow = Record<string, unknown>
 
@@ -67,7 +68,7 @@ export class HistoryRepository {
           monthId,
           year,
           month,
-          currency: text(row.currency, 'currency'),
+          currency: parseCurrencyCode(row.currency),
           initialAmountCents,
           debtTotal,
           debtPending,

@@ -19,7 +19,7 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Bloquear automáticamente la bóveda después de 15 minutos sin actividad, incluso si hay cambios sin guardar.
 - Alternar entre tema claro y oscuro.
 
-La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. ARS puede mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
+La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. Cada bóveda guarda una moneda única: ARS (por defecto), USD o EUR. ARS y USD se muestran con `$`; EUR se muestra con `€`. Cambiar la moneda no convierte los importes: solo cambia su denominación. ARS, USD y EUR pueden mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
 
 ## Cálculo mensual
 
@@ -191,7 +191,7 @@ Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el
 
 ## Limitaciones actuales
 
-- Una sola moneda por archivo: ARS.
+- Una sola moneda por archivo: ARS, USD o EUR. No hay conversión entre monedas.
 - Sin backend, cuentas, recuperación remota ni sincronización propia.
 - Sin colaboración entre varias personas o pestañas.
 - Sin importación automática desde Excel o bancos.
@@ -219,7 +219,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Automatically lock the vault after 15 minutes without activity, even when there are unsaved changes.
 - Warn about unsaved changes and switch between light and dark themes.
 
-Amounts use ARS and can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
+Each vault uses one stored currency: ARS by default, USD, or EUR. ARS and USD use `$`; EUR uses `€`. Changing the currency changes the denomination without converting amounts. Amounts can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 
 ## Requirements and setup
 

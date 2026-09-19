@@ -5,6 +5,8 @@ import { queryOne, queryRows, required, runSql, safeInteger, timestamp, writeTra
 import { DebtsRepository } from './debts.ts'
 import { TemplatesRepository } from './templates.ts'
 import { adjustDueDayToMonth, isValidCivilDate } from '../../domain/dates.ts'
+import { VaultRepository } from './vault.ts'
+import { parseCurrencyCode } from '../../domain/currency.ts'
 
 const validateMonthInput = (input: Pick<NewMonthWithDebts, 'year' | 'month' | 'initialAmountCents'>): void => {
   safeInteger(input.year, 'year')
@@ -30,7 +32,7 @@ const validateTemplateInputs = (year: number, month: number, entries: NewTemplat
 
 const mapMonth = (row: Record<string, unknown>): Month => ({
   id: String(row.id), year: safeInteger(row.year, 'year'), month: safeInteger(row.month, 'month'),
-  initialAmountCents: safeInteger(row.initial_amount_cents, 'initial_amount_cents'), currency: String(row.currency),
+  initialAmountCents: safeInteger(row.initial_amount_cents, 'initial_amount_cents'), currency: parseCurrencyCode(row.currency),
   createdAt: timestamp(row.created_at, 'created_at'), updatedAt: timestamp(row.updated_at, 'updated_at'),
 })
 
@@ -43,17 +45,18 @@ export class MonthsRepository {
   getByYearMonth(year: number, month: number): Month | undefined { const row = queryOne(this.db, 'SELECT * FROM months WHERE year = ? AND month = ?', [year, month]); return row && mapMonth(row) }
   list(): Month[] { return queryRows(this.db, 'SELECT * FROM months ORDER BY year DESC, month DESC').map(mapMonth) }
 
-  create(year: number, month: number, initialAmountCents: number, id = this.ids(), currency = 'ARS', createdAt = nowIso(), updatedAt = createdAt): Month {
+  create(year: number, month: number, initialAmountCents: number, id = this.ids(), createdAt = nowIso(), updatedAt = createdAt): Month {
     validateMonthInput({ year, month, initialAmountCents }); timestamp(createdAt, 'created_at'); timestamp(updatedAt, 'updated_at')
+    const currency = new VaultRepository(this.db).getCurrency()
     return writeTransaction(this.db, () => {
       runSql(this.db, 'INSERT INTO months(id, year, month, initial_amount_cents, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [id, year, month, initialAmountCents, currency, createdAt, updatedAt])
       return required(this.getById(id), 'month')
     })
   }
 
-  update(id: string, input: Partial<Pick<Month, 'year' | 'month' | 'initialAmountCents' | 'currency'>>): Month {
+  update(id: string, input: Partial<Pick<Month, 'year' | 'month' | 'initialAmountCents'>>): Month {
     const current = required(this.getById(id), 'month')
-    const next = { ...current, ...input }
+    const next = { ...current, ...input, currency: new VaultRepository(this.db).getCurrency() }
     safeInteger(next.year, 'year'); safeInteger(next.month, 'month'); safeInteger(next.initialAmountCents, 'initial_amount_cents')
     return writeTransaction(this.db, () => {
       runSql(this.db, 'UPDATE months SET year = ?, month = ?, initial_amount_cents = ?, currency = ?, updated_at = ? WHERE id = ?', [next.year, next.month, next.initialAmountCents, next.currency, nowIso(), id])
@@ -67,7 +70,7 @@ export class MonthsRepository {
     const existing = this.getByYearMonth(input.year, input.month)
     if (existing) return { month: existing, debts: new DebtsRepository(this.db, this.ids).listByMonth(existing.id) }
     return writeTransaction(this.db, () => {
-      const month = this.create(input.year, input.month, input.initialAmountCents, input.id ?? this.ids(), input.currency ?? 'ARS', input.createdAt ?? nowIso())
+      const month = this.create(input.year, input.month, input.initialAmountCents, input.id ?? this.ids(), input.createdAt ?? nowIso())
       const debts = (input.debts ?? []).map((debt) => new DebtsRepository(this.db, this.ids).create({ ...debt, monthId: month.id }))
       return { month, debts }
     })
@@ -79,7 +82,7 @@ export class MonthsRepository {
     const existing = this.getByYearMonth(input.year, input.month)
     if (existing) return { month: existing, debts: new DebtsRepository(this.db, this.ids).listByMonth(existing.id) }
     return writeTransaction(this.db, () => {
-      const month = this.create(input.year, input.month, input.initialAmountCents, input.id ?? this.ids(), input.currency ?? 'ARS', input.createdAt ?? nowIso())
+      const month = this.create(input.year, input.month, input.initialAmountCents, input.id ?? this.ids(), input.createdAt ?? nowIso())
       const templates = new TemplatesRepository(this.db, this.ids)
       const debtsRepository = new DebtsRepository(this.db, this.ids)
       const debts = templateIds.map((entry) => {

@@ -15,6 +15,7 @@ import {
   type VaultFileHandle,
   type VaultFileSelection,
 } from './VaultFileAccess.ts'
+import { DEFAULT_CURRENCY, isCurrencyCode, type CurrencyCode } from '../../domain/currency.ts'
 
 export type VaultStatus = 'locked' | 'opening' | 'unlocked' | 'error'
 
@@ -25,6 +26,7 @@ export interface VaultSnapshot {
   error: string | null
   activeFileName: string | null
   directFileAccessSupported: boolean
+  currency: CurrencyCode
 }
 
 export interface DatabaseClientLike {
@@ -50,6 +52,7 @@ export interface VaultSessionOptions {
 type Listener = () => void
 
 const mutationKinds = new Set([
+  'vault.setCurrency',
   'months.create', 'months.update', 'months.delete',
   'months.createWithDebts', 'months.createWithTemplates',
   'categories.create', 'categories.update', 'categories.delete',
@@ -67,6 +70,7 @@ const initialSnapshot = (directFileAccessSupported = false): VaultSnapshot => ({
   error: null,
   activeFileName: null,
   directFileAccessSupported,
+  currency: DEFAULT_CURRENCY,
 })
 
 const pad = (value: number): string => String(value).padStart(2, '0')
@@ -148,13 +152,14 @@ export class VaultSession {
         key = await importPasswordKey(password)
         candidate = this.options.createClient()
         await candidate.open()
+        const currency = await candidate.operation<unknown>({ kind: 'vault.getCurrency' })
         await closeQuietly(this.client)
         this.client = candidate
         this.passwordKey = key
         candidate = undefined
         key = undefined
         this.activeTarget = undefined
-        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null })
+        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null, currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY })
       } catch (error) {
         await closeQuietly(candidate)
         this.client = previousClient
@@ -185,6 +190,7 @@ export class VaultSession {
         candidate = this.options.createClient()
         // DatabaseClient transfers its argument, so this copy is disposable.
         await candidate.open(new Uint8Array(plaintext))
+        const currency = await candidate.operation<unknown>({ kind: 'vault.getCurrency' })
         await closeQuietly(this.client)
         this.client = candidate
         this.passwordKey = key
@@ -199,6 +205,7 @@ export class VaultSession {
           lastExportAt: null,
           error: null,
           activeFileName: selection && decrypted.metadata.format === 'nimvo' ? selection.name : null,
+          currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY,
         })
       } catch (error) {
         await closeQuietly(candidate)
@@ -255,7 +262,9 @@ export class VaultSession {
     return this.enqueue(async () => {
       const client = this.requireClient()
       const result = await client.operation<T>(operation)
-      if (mutationKinds.has(operation.kind)) this.setSnapshot({ dirty: true, error: null })
+      if (operation.kind === 'vault.setCurrency') {
+        this.setSnapshot({ dirty: true, error: null, currency: isCurrencyCode(result) ? result : operation.currency })
+      } else if (mutationKinds.has(operation.kind)) this.setSnapshot({ dirty: true, error: null })
       return result
     })
   }

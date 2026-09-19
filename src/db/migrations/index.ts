@@ -1,7 +1,8 @@
 import type { Database } from 'sql.js'
-import { migrations } from './001_initial.ts'
+import { migrations as initialMigrations } from './001_initial.ts'
+import { CURRENCY_SCHEMA_VERSION, migrateCurrency } from './002_currency.ts'
 
-export { migrations }
+export const migrations = [...initialMigrations, { version: CURRENCY_SCHEMA_VERSION, run: migrateCurrency }]
 
 const readUserVersion = (db: Database): number => {
   const result = db.exec('PRAGMA user_version')

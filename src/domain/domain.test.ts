@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addCents, calculateMonthlySummary, isSafeCents, parseMoneyToCents, parseSignedMoneyToCents, validateDebt, validateExpense } from './index.ts'
+import { addCents, calculateMonthlySummary, formatCurrency, isSafeCents, parseMoneyToCents, parseSignedMoneyToCents, validateDebt, validateExpense } from './index.ts'
 
 describe('domain contracts', () => {
   it('rejects fractions and unsafe amounts', () => {
@@ -18,6 +18,12 @@ describe('domain contracts', () => {
     expect(parseSignedMoneyToCents('-90.071.992.547.409,92')).toBeNull()
     expect(parseSignedMoneyToCents('1,234.56', 'es-AR')).toBe(123456)
     expect(parseSignedMoneyToCents('1.234,56', 'en-US')).toBe(123456)
+  })
+
+  it('formats each supported currency with its catalog symbol', () => {
+    expect(formatCurrency(12345, 'ARS', { locale: 'en-US' })).toBe('$\u00a0123.45')
+    expect(formatCurrency(12345, 'USD', { locale: 'en-US' })).toBe('$\u00a0123.45')
+    expect(formatCurrency(12345, 'EUR', { locale: 'es-AR' })).toBe('€\u00a0123,45')
   })
 
   it('counts only debts with paidAt as paid and detects signed overflow', () => {

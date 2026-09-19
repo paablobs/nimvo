@@ -87,6 +87,15 @@ const renderCreate = (session: VaultSession) => render(
 )
 
 describe('VaultSession', () => {
+  it('loads and persists the vault currency through a serialized mutation', async () => {
+    const client = fakeClient({ operation: vi.fn(async (operation: DomainOperation) => operation.kind === 'vault.getCurrency' ? 'ARS' : operation.kind === 'vault.setCurrency' ? operation.currency : undefined) as DatabaseClientLike['operation'] })
+    const session = new VaultSession({ createClient: () => client })
+    await session.create('password-1')
+    expect(session.getSnapshot().currency).toBe('ARS')
+    await session.operation({ kind: 'vault.setCurrency', currency: 'EUR' })
+    expect(session.getSnapshot()).toMatchObject({ currency: 'EUR', dirty: true })
+  })
+
   it('creates, tracks only successful mutations, and locks the worker', async () => {
     const client = fakeClient()
     const session = new VaultSession({ createClient: () => client })

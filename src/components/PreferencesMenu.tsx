@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/useI18n.ts'
 import { useTheme } from '../theme/theme.ts'
+import { CURRENCIES, DEFAULT_CURRENCY, type CurrencyCode } from '../domain/currency.ts'
+import { VaultContext } from '../features/vault/VaultContext.ts'
 
 export default function PreferencesMenu() {
   const { locale, setLocale, numberFormat, setNumberFormat, t } = useI18n()
   const { mode, toggle } = useTheme()
+  const vault = useContext(VaultContext)
   const [open, setOpen] = useState(false)
+  const [currencyBusy, setCurrencyBusy] = useState(false)
+  const [currencyError, setCurrencyError] = useState('')
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -44,11 +49,25 @@ export default function PreferencesMenu() {
     document.addEventListener('keydown', escapeAndTrap)
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', escapeAndTrap) }
   }, [closeMenu, open])
+  const currency = vault?.currency ?? DEFAULT_CURRENCY
+  async function selectCurrency(next: CurrencyCode) {
+    if (!vault || vault.status !== 'unlocked' || next === currency || currencyBusy) return
+    setCurrencyBusy(true)
+    setCurrencyError('')
+    try {
+      await vault.operation({ kind: 'vault.setCurrency', currency: next })
+      closeMenu()
+    } catch {
+      setCurrencyError(t('currencyUpdateError'))
+    } finally { setCurrencyBusy(false) }
+  }
   return <div className="preferences-menu" ref={ref}>
     <button ref={triggerRef} className="theme-toggle preferences-trigger" type="button" aria-label={t('preferences')} aria-expanded={open} aria-controls="preferences-popover" onClick={() => { if (open) closeMenu(); else setOpen(true) }}>⚙ <span className="sr-only">{t('preferences')}</span></button>
     {open && <div ref={popoverRef} className="preferences-popover" id="preferences-popover" role="dialog" aria-label={t('preferences')}>
+      {currencyError && <p className="form-message error" role="alert">{currencyError}</p>}
       <fieldset><legend>{t('language')}</legend><div className="preference-options"><button type="button" className={locale === 'en' ? 'selected' : ''} aria-pressed={locale === 'en'} onClick={() => { setLocale('en'); closeMenu() }}>EN</button><button type="button" className={locale === 'es' ? 'selected' : ''} aria-pressed={locale === 'es'} onClick={() => { setLocale('es'); closeMenu() }}>ES</button></div></fieldset>
       <fieldset><legend>{t('numberFormat')}</legend><div className="preference-options"><button type="button" className={numberFormat === 'en-US' ? 'selected' : ''} aria-pressed={numberFormat === 'en-US'} onClick={() => { setNumberFormat('en-US'); closeMenu() }}>1,234.56</button><button type="button" className={numberFormat === 'es-AR' ? 'selected' : ''} aria-pressed={numberFormat === 'es-AR'} onClick={() => { setNumberFormat('es-AR'); closeMenu() }}>1.234,56</button></div></fieldset>
+      <fieldset><legend>{t('currency')}</legend><div className="preference-options">{CURRENCIES.map((entry) => <button key={entry.code} type="button" className={currency === entry.code ? 'selected' : ''} aria-pressed={currency === entry.code} disabled={!vault || vault.status !== 'unlocked' || currencyBusy} onClick={() => { void selectCurrency(entry.code) }}>{entry.code}</button>)}</div></fieldset>
       <fieldset><legend>{t('theme')}</legend><div className="preference-options"><button type="button" className={mode === 'light' ? 'selected' : ''} aria-pressed={mode === 'light'} onClick={() => { if (mode === 'dark') toggle(); closeMenu() }}>{t('light')}</button><button type="button" className={mode === 'dark' ? 'selected' : ''} aria-pressed={mode === 'dark'} onClick={() => { if (mode === 'light') toggle(); closeMenu() }}>{t('dark')}</button></div></fieldset>
     </div>}
   </div>

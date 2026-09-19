@@ -7,14 +7,17 @@ import { ExpensesRepository } from '../repositories/expenses.ts'
 import { HistoryRepository } from '../repositories/history.ts'
 import { MonthsRepository } from '../repositories/months.ts'
 import { TemplatesRepository } from '../repositories/templates.ts'
+import { VaultRepository } from '../repositories/vault.ts'
 import type { DomainOperation } from './protocol.ts'
 
 export const executeOperation = (db: Database, operation: DomainOperation, ids?: IdFactory): unknown => {
   const factory = createIdFactory(ids)
   switch (operation.kind) {
+    case 'vault.getCurrency': return new VaultRepository(db).getCurrency()
+    case 'vault.setCurrency': return new VaultRepository(db).setCurrency(operation.currency)
     case 'months.list': return new MonthsRepository(db, factory).list()
     case 'months.get': return new MonthsRepository(db, factory).getById(operation.id)
-    case 'months.create': return new MonthsRepository(db, factory).create(operation.year, operation.month, operation.initialAmountCents, operation.id, operation.currency)
+    case 'months.create': return new MonthsRepository(db, factory).create(operation.year, operation.month, operation.initialAmountCents, operation.id)
     case 'months.update': return new MonthsRepository(db, factory).update(operation.id, operation.input)
     case 'months.delete': return new MonthsRepository(db, factory).delete(operation.id)
     case 'months.createWithDebts': return new MonthsRepository(db, factory).createWithDebts(operation.input)

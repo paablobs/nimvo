@@ -2,7 +2,7 @@ import { formatMoney, parseMoneyToCents, parseSignedMoneyToCents, type MoneyLoca
 
 /** Keeps a money draft editable while rejecting characters and fractions beyond centavos. */
 export function sanitizeArsMoneyInput(value: string, allowNegative = false, locale: MoneyLocale = 'es-AR'): string {
-  const source = value.replace(/\s/g, '').replace(/\$/g, '')
+  const source = value.replace(/\s/g, '').replace(/[€$]/g, '')
   const negative = allowNegative && source.startsWith('-')
   const body = source.replace(/^[+-]/, '').replace(/[^0-9.,]/g, '')
   if (body === '') return negative ? '-' : ''
