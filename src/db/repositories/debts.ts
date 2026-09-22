@@ -2,6 +2,7 @@ import type { Database } from 'sql.js'
 import { createIdFactory, nowIso } from '../ids.ts'
 import type { Debt, IdFactory, NewDebt } from '../types.ts'
 import { nullableTimestamp, queryOne, queryRows, required, runSql, safeInteger, timestamp, writeTransaction } from './common.ts'
+import { isValidCivilDate } from '../../domain/dates.ts'
 import { validateDebt } from '../../domain/validation.ts'
 
 const mapDebt = (row: Record<string, unknown>): Debt => ({
@@ -16,6 +17,15 @@ const nextUpdatedAt = (current: string): string => {
     : now
 }
 
+const assertDueDateBelongsToMonth = (db: Database, monthId: string, dueDate: string | null | undefined): void => {
+  if (dueDate == null) return
+  if (!isValidCivilDate(dueDate)) throw new RangeError('Fecha de vencimiento inválida')
+  const month = queryOne(db, 'SELECT year, month FROM months WHERE id = ?', [monthId])
+  if (!month || !dueDate.startsWith(`${String(month.year).padStart(4, '0')}-${String(month.month).padStart(2, '0')}-`)) {
+    throw new RangeError('Fecha de vencimiento fuera del mes')
+  }
+}
+
 export class DebtsRepository {
   private readonly ids: IdFactory
   private readonly db: Database
@@ -27,6 +37,7 @@ export class DebtsRepository {
     const candidate = { ...input, id, createdAt, updatedAt }
     timestamp(createdAt, 'created_at'); timestamp(updatedAt, 'updated_at')
     if (!validateDebt(candidate).valid) throw new Error('Deuda inválida')
+    assertDueDateBelongsToMonth(this.db, candidate.monthId, candidate.dueDate)
     return writeTransaction(this.db, () => {
       runSql(this.db, 'INSERT INTO debts(id, month_id, template_id, concept, due_date, amount_cents, paid_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, input.monthId, input.templateId ?? null, input.concept.trim(), input.dueDate ?? null, input.amountCents, input.paidAt ?? null, createdAt, updatedAt])
       return required(this.getById(id), 'debt')
@@ -35,6 +46,7 @@ export class DebtsRepository {
   update(id: string, input: Partial<Omit<NewDebt, 'id' | 'monthId'>>): Debt {
     const current = required(this.getById(id), 'debt'), next = { ...current, ...input, id, updatedAt: nextUpdatedAt(current.updatedAt) }
     if (!validateDebt(next).valid) throw new Error('Deuda inválida')
+    assertDueDateBelongsToMonth(this.db, next.monthId, next.dueDate)
     return writeTransaction(this.db, () => {
       runSql(this.db, 'UPDATE debts SET template_id = ?, concept = ?, due_date = ?, amount_cents = ?, paid_at = ?, updated_at = ? WHERE id = ?', [next.templateId ?? null, next.concept.trim(), next.dueDate ?? null, next.amountCents, next.paidAt ?? null, next.updatedAt, id])
       return required(this.getById(id), 'debt')

@@ -30,6 +30,14 @@ const validateTemplateInputs = (year: number, month: number, entries: NewTemplat
   }
 }
 
+const assertDebtDueDatesBelongToPeriod = (db: Database, monthId: string, year: number, month: number): void => {
+  const prefix = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-`
+  const dueDates = queryRows(db, 'SELECT due_date FROM debts WHERE month_id = ? AND due_date IS NOT NULL', [monthId])
+  if (dueDates.some((row) => typeof row.due_date !== 'string' || !row.due_date.startsWith(prefix))) {
+    throw new RangeError('Fecha de vencimiento fuera del mes')
+  }
+}
+
 const mapMonth = (row: Record<string, unknown>): Month => ({
   id: String(row.id), year: safeInteger(row.year, 'year'), month: safeInteger(row.month, 'month'),
   initialAmountCents: safeInteger(row.initial_amount_cents, 'initial_amount_cents'), currency: parseCurrencyCode(row.currency),
@@ -57,8 +65,9 @@ export class MonthsRepository {
   update(id: string, input: Partial<Pick<Month, 'year' | 'month' | 'initialAmountCents'>>): Month {
     const current = required(this.getById(id), 'month')
     const next = { ...current, ...input, currency: new VaultRepository(this.db).getCurrency() }
-    safeInteger(next.year, 'year'); safeInteger(next.month, 'month'); safeInteger(next.initialAmountCents, 'initial_amount_cents')
+    validateMonthInput(next)
     return writeTransaction(this.db, () => {
+      if (next.year !== current.year || next.month !== current.month) assertDebtDueDatesBelongToPeriod(this.db, id, next.year, next.month)
       runSql(this.db, 'UPDATE months SET year = ?, month = ?, initial_amount_cents = ?, currency = ?, updated_at = ? WHERE id = ?', [next.year, next.month, next.initialAmountCents, next.currency, nowIso(), id])
       return required(this.getById(id), 'month')
     })
