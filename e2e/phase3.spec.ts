@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 
 test('crea un mes, agrega un gasto fijo y mantiene el saldo al pagarlo', async ({ page }) => {
   await page.goto('/crear')
@@ -31,4 +32,61 @@ test('crea un mes, agrega un gasto fijo y mantiene el saldo al pagarlo', async (
   await expect(summary.getByText(/^\$\s*750\.00$/)).toHaveCount(1)
   await expect(summary).not.toContainText('Real balance')
   await expect(summary).not.toContainText('Available balance')
+})
+
+test('colorea gastos fijos según vencimiento y pago', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-10T12:00:00Z'))
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.setViewportSize({ width: 320, height: 720 })
+  await page.goto('/crear')
+  await page.getByLabel('Password', { exact: true }).fill('due-colors-password')
+  await page.getByLabel('Confirm password').fill('due-colors-password')
+  await page.getByRole('button', { name: 'Create vault' }).click()
+  await page.getByRole('button', { name: 'New month' }).click()
+  await page.getByRole('button', { name: 'Create month' }).click()
+
+  for (const [concept, dueDate] of [['Soon', '2026-09-13'], ['Today', '2026-09-10'], ['Late', '2026-09-09'], ['Later', '2026-09-14']]) {
+    await page.getByRole('button', { name: 'New fixed expense' }).click()
+    await page.getByLabel('Concept').fill(concept)
+    await page.getByLabel('Amount (ARS)').fill('100')
+    await page.getByLabel('Due date').fill(dueDate)
+    await page.getByRole('button', { name: 'Save fixed expense' }).click()
+  }
+
+  const soon = page.getByRole('row', { name: /Soon/ })
+  const today = page.getByRole('row', { name: /Today/ })
+  const late = page.getByRole('row', { name: /\bLate\b/ })
+  const later = page.getByRole('row', { name: /\bLater\b/ })
+  await expect(soon).toHaveClass(/debt-row--soon/)
+  await expect(soon).toHaveCSS('color', 'rgb(128, 86, 0)')
+  await expect(soon).toContainText('Due soon')
+  await expect(today).toHaveClass(/debt-row--due/)
+  await expect(today).toHaveCSS('color', 'rgb(162, 49, 47)')
+  await expect(today).toContainText('Due today')
+  await expect(late).toHaveClass(/debt-row--due/)
+  await expect(late).toContainText('Overdue')
+  await expect(later).toHaveClass(/debt-row--normal/)
+
+  const check = today.getByRole('button', { name: 'Mark as paid' })
+  await expect(check.locator('svg')).toBeVisible()
+  await expect(check).toHaveText('')
+  await check.click()
+  await expect(today).toHaveClass(/debt-row--paid/)
+  await expect(today).toHaveCSS('color', 'rgb(22, 95, 88)')
+  await expect(today).toContainText('Paid')
+  await today.getByRole('button', { name: 'Mark as pending' }).click()
+  await expect(today).toHaveClass(/debt-row--due/)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+
+  const axe = await new AxeBuilder({ page }).analyze()
+  expect(axe.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([])
+
+  await page.getByRole('button', { name: 'Preferences' }).click()
+  await page.getByRole('button', { name: 'Dark' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(soon).toHaveCSS('color', 'rgb(232, 196, 95)')
+  await expect(today).toHaveCSS('color', 'rgb(242, 155, 145)')
+  await expect(late.getByRole('button', { name: 'Delete' })).toHaveCSS('background-color', 'rgb(37, 42, 39)')
+  const darkAxe = await new AxeBuilder({ page }).analyze()
+  expect(darkAxe.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([])
 })

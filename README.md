@@ -32,6 +32,7 @@ saldo           = ingresos - gastos_fijos_total - gastos
 
 Marcar un gasto fijo como pagado reduce los gastos fijos pendientes, pero no cambia el saldo: el importe ya estaba reservado dentro del total de gastos fijos.
 Un gasto fijo sin importe aparece como pendiente de completar y no entra en los totales ni en el saldo hasta que se indique su importe.
+En la tabla mensual, los gastos fijos pendientes se muestran en amarillo desde tres días antes del vencimiento y en rojo el día del vencimiento o después. Los pagados se muestran en verde. Los gastos sin vencimiento conservan el color normal.
 
 ## Requisitos
 
@@ -223,6 +224,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 
 Each vault uses one stored currency: ARS by default, USD, or EUR. ARS and USD use `$`; EUR uses `€`. Changing the currency changes the denomination without converting amounts. Amounts can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 Fixed expenses with an unknown amount remain pending and are excluded from totals and balance until their amount is entered.
+In the monthly table, unpaid fixed expenses turn yellow during the three days before their due date and red on or after it. Paid fixed expenses turn green. Items without a due date keep the normal color.
 
 ## Requirements and setup
 

@@ -11,6 +11,7 @@
   --accent-ink: #ffffff;
   --danger: #a2312f;
   --success: #165f58;
+  --warning: #805600;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
   color: var(--text);
   background: var(--bg);
@@ -35,6 +36,7 @@
     --accent-ink: #17211d;
     --danger: #f29b91;
     --success: #8ed1bc;
+    --warning: #e8c45f;
     color-scheme: dark;
   }
 }
@@ -56,6 +58,7 @@
   --accent-ink: #17211d;
   --danger: #f29b91;
   --success: #8ed1bc;
+  --warning: #e8c45f;
   color-scheme: dark;
 }
 
@@ -608,7 +611,7 @@ h1 {
   font-size: 0.75rem;
 }
 
-.button-danger { color: var(--danger); }
+.button-danger { color: var(--danger); background: var(--surface); }
 
 .summary-grid {
   display: grid;
@@ -648,6 +651,12 @@ h1 {
 .data-table td.amount-cell { text-align: right; }
 .status { color: var(--muted); }
 .status-paid { color: var(--success); }
+.debt-row--soon { color: var(--warning); }
+.debt-row--due { color: var(--danger); }
+.debt-row--paid { color: var(--success); }
+.debt-row .status { color: inherit; }
+.debt-paid-action { min-width: 36px; min-height: 36px; padding: 6px; }
+.debt-paid-action.is-paid { border-color: var(--success); color: var(--success); }
 .empty-state { padding: 70px 20px; border: 1px dashed var(--line-strong); text-align: center; }
 .empty-state h2 { margin: 0 0 12px; font-weight: 500; }
 .empty-state p { margin: 0 0 22px; color: var(--muted); font-size: 0.85rem; }

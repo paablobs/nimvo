@@ -1,4 +1,4 @@
-import { Button, Input } from '@chakra-ui/react'
+import { Button, IconButton, Input } from '@chakra-ui/react'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import AccessibleDialog from '../../components/AccessibleDialog.tsx'
@@ -10,6 +10,9 @@ import { useVaultSession } from '../vault/useVaultSession.ts'
 import ArsMoneyInput from '../../components/ArsMoneyInput.tsx'
 import { reformatArsMoneyInput } from '../../components/arsMoneyInput.ts'
 import { useI18n } from '../../i18n/useI18n.ts'
+import { getDebtDueStatus } from '../../domain/debtDueStatus.ts'
+
+const localToday = (date: Date): string => `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
 const debtSchema = z.object({ concept: z.string().trim().min(1, 'Escribí un concepto.'), dueDate: z.string().refine((value) => value === '' || isValidCivilDate(value), 'La fecha de vencimiento no es válida.') })
 
@@ -31,7 +34,21 @@ export default function DebtsTable({ monthId, debts, currency = DEFAULT_CURRENCY
   const [error, setError] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [today, setToday] = useState(() => localToday(new Date()))
   const previousNumberFormat = useRef(numberFormat)
+
+  useEffect(() => {
+    let timer: number
+    const update = () => setToday(localToday(new Date()))
+    const schedule = () => {
+      const now = new Date()
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      timer = window.setTimeout(() => { update(); schedule() }, nextMidnight.getTime() - now.getTime() + 50)
+    }
+    schedule()
+    document.addEventListener('visibilitychange', update)
+    return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', update) }
+  }, [])
 
   useEffect(() => {
     if (previousNumberFormat.current === numberFormat) return
@@ -92,7 +109,12 @@ export default function DebtsTable({ monthId, debts, currency = DEFAULT_CURRENCY
       <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>{t('saveFixedExpense')}</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>{t('cancel')}</Button></div>
     </form>}
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {debts.length === 0 ? <p className="empty-note">{t('noFixedExpenses')}</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">{t('noFixedExpenses')}</caption><thead><tr><th>{t('dueDate')}</th><th>{t('concept')}</th><th className="amount-cell">{t('amount')}</th><th>{t('status')}</th><th>{t('order')}</th><th>{t('templateActions')}</th></tr></thead><tbody>{debts.map((debt, index) => <tr key={debt.id}><td>{debt.dueDate ?? t('dueWithoutDate')}</td><td>{debt.concept}</td><td className="amount-cell">{debt.amountCents === null ? t('fillLater') : formatCurrency(debt.amountCents, currency, { locale: numberFormat })}</td><td><span className={debt.paidAt ? 'status status-paid' : 'status'}>{debt.paidAt ? t('paid') : t('pending')}</span></td><td><div className="debt-order-actions"><Button className="button button-small" type="button" aria-label={t('moveDebtUp', { concept: debt.concept })} onClick={() => void move(debt, -1)} disabled={busy || index === 0}>↑</Button><Button className="button button-small" type="button" aria-label={t('moveDebtDown', { concept: debt.concept })} onClick={() => void move(debt, 1)} disabled={busy || index === debts.length - 1}>↓</Button></div></td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => toggle(debt)} disabled={busy || debt.amountCents === null}>{debt.paidAt ? t('markPending') : t('markPaid')}</Button><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>{t('edit')}</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>{t('delete')}</Button></td></tr>)}</tbody></table></div>}
+    {debts.length === 0 ? <p className="empty-note">{t('noFixedExpenses')}</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">{t('noFixedExpenses')}</caption><thead><tr><th>{t('dueDate')}</th><th>{t('concept')}</th><th className="amount-cell">{t('amount')}</th><th>{t('status')}</th><th>{t('order')}</th><th>{t('templateActions')}</th></tr></thead><tbody>{debts.map((debt, index) => {
+      const dueStatus = getDebtDueStatus(debt.dueDate, debt.paidAt, today)
+      const statusLabel = dueStatus === 'paid' ? t('paid') : dueStatus === 'soon' ? t('dueSoon') : dueStatus === 'due' ? (debt.dueDate === today ? t('dueToday') : t('overdue')) : t('pending')
+      const toggleLabel = debt.paidAt ? t('markPending') : t('markPaid')
+      return <tr className={`debt-row debt-row--${dueStatus}`} key={debt.id}><td>{debt.dueDate ?? t('dueWithoutDate')}</td><td>{debt.concept}</td><td className="amount-cell">{debt.amountCents === null ? t('fillLater') : formatCurrency(debt.amountCents, currency, { locale: numberFormat })}</td><td><span className="status">{statusLabel}</span></td><td><div className="debt-order-actions"><Button className="button button-small" type="button" aria-label={t('moveDebtUp', { concept: debt.concept })} onClick={() => void move(debt, -1)} disabled={busy || index === 0}>↑</Button><Button className="button button-small" type="button" aria-label={t('moveDebtDown', { concept: debt.concept })} onClick={() => void move(debt, 1)} disabled={busy || index === debts.length - 1}>↓</Button></div></td><td className="row-actions"><IconButton className={`button button-small debt-paid-action${debt.paidAt ? ' is-paid' : ''}`} type="button" aria-label={toggleLabel} title={toggleLabel} onClick={() => toggle(debt)} disabled={busy || debt.amountCents === null}><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></IconButton><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>{t('edit')}</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>{t('delete')}</Button></td></tr>
+    })}</tbody></table></div>}
     {deleteId && <AccessibleDialog titleId="delete-debt-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-debt-title">{t('deleteFixedTitle')}</strong><p>{t('undoWarning')}</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>{t('delete')}</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>{t('cancel')}</Button></div></div></AccessibleDialog>}
   </section>
 }
