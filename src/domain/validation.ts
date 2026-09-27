@@ -39,7 +39,8 @@ export function validateRecurringDebtTemplate(value: Partial<RecurringDebtTempla
 }
 
 export function validateDebt(value: Partial<Debt> | null | undefined): ValidationResult {
-  if (!value || !id(value.id) || !id(value.monthId) || typeof value.concept !== 'string' || value.concept.trim() === '' || !isSafeCents(value.amountCents, { allowZero: false })) return fail('Deuda inválida')
+  if (!value || !id(value.id) || !id(value.monthId) || typeof value.concept !== 'string' || value.concept.trim() === '' || (value.amountCents !== null && !isSafeCents(value.amountCents, { allowZero: false }))) return fail('Deuda inválida')
+  if (value.amountCents === null && value.paidAt !== null && value.paidAt !== undefined) return fail('Una deuda sin importe no puede estar pagada')
   if (value.templateId !== null && value.templateId !== undefined && !id(value.templateId)) return fail('Plantilla inválida')
   if (value.dueDate !== null && value.dueDate !== undefined && !isValidCivilDate(value.dueDate)) return fail('Fecha de vencimiento inválida')
   if (value.paidAt !== null && value.paidAt !== undefined && !isValidTimestamp(value.paidAt)) return fail('Marca temporal inválida')

@@ -138,7 +138,7 @@ function VaultHomePage() {
         <ExpensesPanel key={`expenses-${selected.id}`} monthId={selected.id} year={selected.year} month={selected.month} expenses={expenses} categories={categories} currency={vault.currency} onRefresh={() => loadMonthDetails(selected.id)} onCategoriesRefresh={loadMonths} />
       </>}
     </>}
-    {showNew && <MonthCreationDialog existingMonths={months} templates={templates} currency={vault.currency} onClose={() => setShowNew(false)} onCreated={afterMonthCreated} />}
+    {showNew && <MonthCreationDialog existingMonths={months} templates={templates} currency={vault.currency} onClose={() => setShowNew(false)} onCreated={afterMonthCreated} onTemplatesReordered={loadMonths} />}
     {showTemplates && <TemplatesPanel templates={templates} currency={vault.currency} onRefresh={loadMonths} onClose={() => setShowTemplates(false)} />}
     {showCategories && <CategoriesPanel categories={categories} onRefresh={loadMonths} onClose={() => setShowCategories(false)} />}
   </section>

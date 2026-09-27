@@ -19,7 +19,7 @@ export interface MonthlySummaryInput {
 }
 
 export type SummaryDebt = {
-  amountCents?: Cents
+  amountCents?: Cents | null
   paidAt?: string | null
 }
 
@@ -32,6 +32,10 @@ function amountOf(value: { amountCents?: unknown; amount?: unknown }): Cents {
   const amount = value.amountCents
   if (!isSafeSignedCents(amount)) throw new RangeError('El importe debe ser un entero seguro en centavos')
   return amount
+}
+
+function debtAmountOf(value: SummaryDebt): Cents | null {
+  return value.amountCents === null ? null : amountOf(value)
 }
 
 function paidOf(value: { paidAt?: unknown }): boolean {
@@ -77,9 +81,9 @@ export function calculateMonthlySummary(
   if (!isSafeSignedCents(initialBalance)) throw new RangeError('El saldo inicial debe ser un entero seguro en centavos')
   if (!debts || !expenses) throw new TypeError('Faltan deudas o gastos para calcular el resumen')
 
-  const debtAmounts = debts.map(amountOf)
+  const debtAmounts = debts.map(debtAmountOf).filter((amount): amount is Cents => amount !== null)
   const debtTotal = addMany(debtAmounts)
-  const debtPaid = addMany(debts.filter(paidOf).map(amountOf))
+  const debtPaid = addMany(debts.filter(paidOf).map(debtAmountOf).filter((amount): amount is Cents => amount !== null))
   const debtPending = addCents(debtTotal, -debtPaid)
   const dailyExpenses = addMany(expenses.map(amountOf))
   const balance = addCents(addCents(initialBalance, -debtTotal), -dailyExpenses)

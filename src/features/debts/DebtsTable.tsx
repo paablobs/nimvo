@@ -40,7 +40,7 @@ export default function DebtsTable({ monthId, debts, currency = DEFAULT_CURRENCY
   }, [numberFormat])
 
   function startCreate() { setEditingId(null); setDraft(blankDraft()); setError('') }
-  function startEdit(debt: Debt) { setEditingId(debt.id); setDraft({ concept: debt.concept, amount: formatCurrency(debt.amountCents, currency, { symbol: false, locale: numberFormat }), dueDate: debt.dueDate ?? '' }); setError('') }
+  function startEdit(debt: Debt) { setEditingId(debt.id); setDraft({ concept: debt.concept, amount: debt.amountCents === null ? '' : formatCurrency(debt.amountCents, currency, { symbol: false, locale: numberFormat }), dueDate: debt.dueDate ?? '' }); setError('') }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -58,8 +58,23 @@ export default function DebtsTable({ monthId, debts, currency = DEFAULT_CURRENCY
   }
 
   async function toggle(debt: Debt) {
+    if (debt.amountCents === null) return
     setBusy(true)
     try { await vault.operation({ kind: 'debts.update', id: debt.id, input: { paidAt: debt.paidAt ? null : new Date().toISOString() } }); await onRefresh() } catch { setError(t('statusUpdateError')) } finally { setBusy(false) }
+  }
+
+  async function move(debt: Debt, direction: -1 | 1) {
+    const source = debts.findIndex((entry) => entry.id === debt.id)
+    const target = source + direction
+    if (busy || source < 0 || target < 0 || target >= debts.length) return
+    const ids = debts.map((entry) => entry.id)
+    ;[ids[source], ids[target]] = [ids[target], ids[source]]
+    setError('')
+    setBusy(true)
+    try {
+      await vault.operation({ kind: 'debts.reorder', monthId, ids })
+      await onRefresh()
+    } catch { setError(t('debtOrderError')) } finally { setBusy(false) }
   }
 
   async function remove() {
@@ -77,7 +92,7 @@ export default function DebtsTable({ monthId, debts, currency = DEFAULT_CURRENCY
       <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>{t('saveFixedExpense')}</Button><Button className="button button-secondary" type="button" onClick={() => setDraft(null)} disabled={busy}>{t('cancel')}</Button></div>
     </form>}
     {error && <p className="form-message error" role="alert">{error}</p>}
-    {debts.length === 0 ? <p className="empty-note">{t('noFixedExpenses')}</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">{t('noFixedExpenses')}</caption><thead><tr><th>{t('dueDate')}</th><th>{t('concept')}</th><th className="amount-cell">{t('amount')}</th><th>{t('status')}</th><th>{t('templateActions')}</th></tr></thead><tbody>{debts.map((debt) => <tr key={debt.id}><td>{debt.dueDate ?? t('dueWithoutDate')}</td><td>{debt.concept}</td><td className="amount-cell">{formatCurrency(debt.amountCents, currency, { locale: numberFormat })}</td><td><span className={debt.paidAt ? 'status status-paid' : 'status'}>{debt.paidAt ? t('paid') : t('pending')}</span></td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => toggle(debt)} disabled={busy}>{debt.paidAt ? t('markPending') : t('markPaid')}</Button><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>{t('edit')}</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>{t('delete')}</Button></td></tr>)}</tbody></table></div>}
+    {debts.length === 0 ? <p className="empty-note">{t('noFixedExpenses')}</p> : <div className="table-scroll"><table className="data-table"><caption className="sr-only">{t('noFixedExpenses')}</caption><thead><tr><th>{t('dueDate')}</th><th>{t('concept')}</th><th className="amount-cell">{t('amount')}</th><th>{t('status')}</th><th>{t('order')}</th><th>{t('templateActions')}</th></tr></thead><tbody>{debts.map((debt, index) => <tr key={debt.id}><td>{debt.dueDate ?? t('dueWithoutDate')}</td><td>{debt.concept}</td><td className="amount-cell">{debt.amountCents === null ? t('fillLater') : formatCurrency(debt.amountCents, currency, { locale: numberFormat })}</td><td><span className={debt.paidAt ? 'status status-paid' : 'status'}>{debt.paidAt ? t('paid') : t('pending')}</span></td><td><div className="debt-order-actions"><Button className="button button-small" type="button" aria-label={t('moveDebtUp', { concept: debt.concept })} onClick={() => void move(debt, -1)} disabled={busy || index === 0}>↑</Button><Button className="button button-small" type="button" aria-label={t('moveDebtDown', { concept: debt.concept })} onClick={() => void move(debt, 1)} disabled={busy || index === debts.length - 1}>↓</Button></div></td><td className="row-actions"><Button className="button button-small" type="button" onClick={() => toggle(debt)} disabled={busy || debt.amountCents === null}>{debt.paidAt ? t('markPending') : t('markPaid')}</Button><Button className="button button-small" type="button" onClick={() => startEdit(debt)} disabled={busy}>{t('edit')}</Button><Button className="button button-small button-danger" type="button" onClick={() => setDeleteId(debt.id)} disabled={busy}>{t('delete')}</Button></td></tr>)}</tbody></table></div>}
     {deleteId && <AccessibleDialog titleId="delete-debt-title" onClose={() => setDeleteId(null)}><div className="confirm-box"><strong id="delete-debt-title">{t('deleteFixedTitle')}</strong><p>{t('undoWarning')}</p><div className="form-actions"><Button className="button button-danger" data-dialog-autofocus type="button" onClick={remove} loading={busy}>{t('delete')}</Button><Button className="button button-secondary" type="button" onClick={() => setDeleteId(null)} disabled={busy}>{t('cancel')}</Button></div></div></AccessibleDialog>}
   </section>
 }

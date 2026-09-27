@@ -23,12 +23,14 @@ export type DomainOperation =
   | { kind: 'templates.get'; id: string }
   | { kind: 'templates.create'; input: Omit<NewTemplate, 'createdAt' | 'updatedAt'> }
   | { kind: 'templates.update'; id: string; input: Partial<Omit<NewTemplate, 'id' | 'createdAt' | 'updatedAt'>> }
+  | { kind: 'templates.reorder'; ids: string[] }
   | { kind: 'templates.delete'; id: string }
   | { kind: 'templates.archive'; id: string }
   | { kind: 'debts.list'; monthId: string }
   | { kind: 'debts.get'; id: string }
   | { kind: 'debts.create'; input: Omit<NewDebt, 'createdAt' | 'updatedAt'> }
   | { kind: 'debts.update'; id: string; input: Partial<Omit<NewDebt, 'id' | 'monthId' | 'createdAt' | 'updatedAt'>> }
+  | { kind: 'debts.reorder'; monthId: string; ids: string[] }
   | { kind: 'debts.delete'; id: string }
   | { kind: 'expenses.list'; monthId: string }
   | { kind: 'expenses.get'; id: string }

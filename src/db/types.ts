@@ -6,7 +6,8 @@ import type { MonthlyHistoryRow } from '../domain/history.ts'
 export type { Category, Debt, Expense, Month, MonthlyHistoryRow, RecurringDebtTemplate }
 
 export type NewCategory = Omit<Category, 'id' | 'createdAt'> & Partial<Pick<Category, 'id' | 'createdAt'>>
-export type NewTemplate = Omit<RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt'>>
+type NewTemplateFields = Exclude<keyof RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt' | 'sortOrder'>
+export type NewTemplate = Pick<RecurringDebtTemplate, NewTemplateFields> & Partial<Pick<RecurringDebtTemplate, 'id' | 'createdAt' | 'updatedAt'>>
 export type NewDebt = Omit<Debt, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<Debt, 'id' | 'createdAt' | 'updatedAt'>>
 export type NewExpense = Omit<Expense, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<Expense, 'id' | 'createdAt' | 'updatedAt'>>
 
@@ -21,7 +22,7 @@ export type NewMonthWithDebts = {
 
 export type NewTemplateDebt = string | {
   templateId: string
-  amountCents?: number
+  amountCents?: number | null
   dueDate?: string | null
 }
 

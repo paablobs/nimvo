@@ -8,8 +8,8 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 
 - Crear y abrir una bóveda protegida con contraseña.
 - Administrar meses con ingresos editables.
-- Crear plantillas de gastos fijos recurrentes y usarlas al generar un mes.
-- Crear, editar, pagar y eliminar gastos fijos.
+- Crear plantillas de gastos fijos recurrentes, ordenarlas al generar un mes y dejar importes pendientes para completarlos después.
+- Crear, editar, ordenar, pagar y eliminar gastos fijos de cada mes.
 - Registrar, editar y eliminar gastos diarios.
 - Crear, renombrar y archivar categorías.
 - Consultar gastos agrupados por categoría.
@@ -31,6 +31,7 @@ saldo           = ingresos - gastos_fijos_total - gastos
 ```
 
 Marcar un gasto fijo como pagado reduce los gastos fijos pendientes, pero no cambia el saldo: el importe ya estaba reservado dentro del total de gastos fijos.
+Un gasto fijo sin importe aparece como pendiente de completar y no entra en los totales ni en el saldo hasta que se indique su importe.
 
 ## Requisitos
 
@@ -211,7 +212,8 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Create and open password-protected vaults.
 - Track editable income for each month.
 - Create recurring fixed-expense templates and apply them to new months.
-- Create, edit, pay, and delete fixed expenses.
+- Reorder templates while creating a month and fill in missing fixed-expense amounts later.
+- Create, edit, reorder, pay, and delete each month's fixed expenses.
 - Create, edit, and delete daily expenses.
 - Create, rename, and archive expense categories.
 - Review expenses by category and compare monthly history.
@@ -220,6 +222,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Warn about unsaved changes and switch between light and dark themes.
 
 Each vault uses one stored currency: ARS by default, USD, or EUR. ARS and USD use `$`; EUR uses `€`. Changing the currency changes the denomination without converting amounts. Amounts can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
+Fixed expenses with an unknown amount remain pending and are excluded from totals and balance until their amount is entered.
 
 ## Requirements and setup
 

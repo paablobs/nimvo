@@ -7,6 +7,7 @@ import { ExpensesRepository } from './repositories/expenses.ts'
 import { MonthsRepository } from './repositories/months.ts'
 import { TemplatesRepository } from './repositories/templates.ts'
 import { VaultRepository } from './repositories/vault.ts'
+import { executeOperation } from './worker/operations.ts'
 import { replaceDatabase } from './worker/runtime.ts'
 import { calculateMonthlySummary } from '../domain/summary.ts'
 import { migrateInitial } from './migrations/001_initial.ts'
@@ -15,14 +16,16 @@ const nodeCwd = (globalThis as typeof globalThis & { process?: { cwd(): string }
 const wasmPath = `${nodeCwd}/node_modules/sql.js/dist/sql-wasm.wasm`
 const openDatabase = (bytes?: Uint8Array) => LocalDatabase.open(bytes, () => initSqlJs({ locateFile: () => wasmPath }))
 
-describe('local database v2', () => {
+describe('local database v5', () => {
   it('uses the exact schema and reopens exported bytes', async () => {
     const db = await openDatabase()
     expect(db.raw.exec('PRAGMA foreign_keys')[0].values[0][0]).toBe(1)
-    expect(db.raw.exec('PRAGMA user_version')[0].values[0][0]).toBe(2)
-    expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'schema_version'")[0].values[0][0]).toBe('2')
+    expect(db.raw.exec('PRAGMA user_version')[0].values[0][0]).toBe(5)
+    expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'schema_version'")[0].values[0][0]).toBe('5')
     expect(db.raw.exec("SELECT value FROM app_meta WHERE key = 'currency'")[0].values[0][0]).toBe('ARS')
     expect(db.raw.exec("SELECT name FROM pragma_table_info('months')")[0].values.flat()).toEqual(['id', 'year', 'month', 'initial_amount_cents', 'currency', 'created_at', 'updated_at'])
+    expect(db.raw.exec("SELECT name FROM pragma_table_info('recurring_debt_templates')")[0].values.flat()).toContain('sort_order')
+    expect(db.raw.exec("SELECT name FROM pragma_index_list('recurring_debt_templates')")[0].values.flat()).toContain('idx_templates_sort_order')
     expect(db.raw.exec("SELECT name FROM pragma_index_list('expenses')")[0].values.flat()).toEqual(expect.arrayContaining(['idx_expenses_category_id', 'idx_expenses_month_spent_on']))
     const ids = (() => { let n = 0; return () => `id-${++n}` })()
     const categories = new CategoriesRepository(db.raw, ids)
@@ -96,6 +99,32 @@ describe('local database v2', () => {
     const snapshot = new DebtsRepository(db.raw).getById(result.debts[0].id)
     expect(snapshot).toMatchObject({ concept: 'Cuota', amountCents: 10, dueDate: '2025-02-28' })
     db.close()
+  })
+
+  it('persists template order, appends new templates, and validates complete reorders', async () => {
+    const db = await openDatabase()
+    const templates = new TemplatesRepository(db.raw)
+    templates.create({ id: 'z', concept: 'Zeta', defaultAmountCents: 10, dueDay: null, isActive: true })
+    templates.create({ id: 'a', concept: 'Alfa', defaultAmountCents: 20, dueDay: null, isActive: true })
+    templates.create({ id: 'm', concept: 'Mitad', defaultAmountCents: 30, dueDay: null, isActive: true })
+    expect(templates.list().map((template) => template.id)).toEqual(['z', 'a', 'm'])
+
+    templates.reorder(['a', 'z', 'm'])
+    expect(templates.list().map((template) => template.id)).toEqual(['a', 'z', 'm'])
+    expect(templates.list().map((template) => template.sortOrder)).toEqual([0, 1, 2])
+    executeOperation(db.raw, { kind: 'templates.reorder', ids: ['m', 'a', 'z'] })
+    expect(templates.list().map((template) => template.id)).toEqual(['m', 'a', 'z'])
+    expect(() => templates.reorder(['a', 'z'])).toThrow()
+    expect(() => templates.reorder(['a', 'a', 'm'])).toThrow()
+    expect(() => templates.reorder(['a', 'z', 'missing'])).toThrow()
+    expect(templates.list().map((template) => template.id)).toEqual(['m', 'a', 'z'])
+
+    const appended = templates.create({ id: 'new', concept: 'Primero', defaultAmountCents: 40, dueDay: null, isActive: true })
+    expect(appended.sortOrder).toBe(3)
+    const reopened = await openDatabase(db.export())
+    expect(new TemplatesRepository(reopened.raw).list().map((template) => template.id)).toEqual(['m', 'a', 'z', 'new'])
+    db.close()
+    reopened.close()
   })
 
   it('validates template overrides and keeps duplicate month creation idempotent', async () => {
@@ -182,12 +211,35 @@ describe('local database v2', () => {
       VALUES ('legacy-eur', 2026, 2, 67890, 'EUR', '2026-02-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z')`)
 
     const migrated = await openDatabase(legacy.export())
-    expect(migrated.schemaVersion).toBe(2)
+    expect(migrated.schemaVersion).toBe(5)
     expect(new VaultRepository(migrated.raw).getCurrency()).toBe('ARS')
     expect(new MonthsRepository(migrated.raw).list().every((month) => month.currency === 'ARS')).toBe(true)
     const reopened = await openDatabase(migrated.export())
     expect(new VaultRepository(reopened.raw).getCurrency()).toBe('ARS')
     expect(new MonthsRepository(reopened.raw).list().map((month) => month.currency)).toEqual(['ARS', 'ARS'])
+    legacy.close()
+    migrated.close()
+    reopened.close()
+  })
+
+  it('seeds recurring template order alphabetically when migrating a legacy vault', async () => {
+    const sql = await initSqlJs({ locateFile: () => wasmPath })
+    const legacy = new sql.Database()
+    migrateInitial(legacy)
+    legacy.run('PRAGMA user_version = 1')
+    legacy.run("INSERT INTO app_meta(key, value) VALUES ('schema_version', '1')")
+    legacy.run(`INSERT INTO recurring_debt_templates(id, concept, default_amount_cents, due_day, is_active, created_at, updated_at)
+      VALUES ('z', 'Zeta', 10, NULL, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`)
+    legacy.run(`INSERT INTO recurring_debt_templates(id, concept, default_amount_cents, due_day, is_active, created_at, updated_at)
+      VALUES ('a', 'Alfa', 20, NULL, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`)
+    legacy.run(`INSERT INTO recurring_debt_templates(id, concept, default_amount_cents, due_day, is_active, created_at, updated_at)
+      VALUES ('m', 'Mitad', 30, NULL, 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`)
+
+    const migrated = await openDatabase(legacy.export())
+    expect(migrated.schemaVersion).toBe(5)
+    expect(new TemplatesRepository(migrated.raw).list().map((template) => template.id)).toEqual(['a', 'm', 'z'])
+    const reopened = await openDatabase(migrated.export())
+    expect(new TemplatesRepository(reopened.raw).list().map((template) => template.id)).toEqual(['a', 'm', 'z'])
     legacy.close()
     migrated.close()
     reopened.close()

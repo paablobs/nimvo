@@ -1,8 +1,17 @@
 import type { Database } from 'sql.js'
 import { migrations as initialMigrations } from './001_initial.ts'
 import { CURRENCY_SCHEMA_VERSION, migrateCurrency } from './002_currency.ts'
+import { migrateTemplateOrder, TEMPLATE_ORDER_SCHEMA_VERSION } from './003_template_order.ts'
+import { migrateNullableDebtAmount, NULLABLE_DEBT_AMOUNT_SCHEMA_VERSION } from './004_nullable_debt_amount.ts'
+import { DEBT_ORDER_SCHEMA_VERSION, migrateDebtOrder } from './005_debt_order.ts'
 
-export const migrations = [...initialMigrations, { version: CURRENCY_SCHEMA_VERSION, run: migrateCurrency }]
+export const migrations = [
+  ...initialMigrations,
+  { version: CURRENCY_SCHEMA_VERSION, run: migrateCurrency },
+  { version: TEMPLATE_ORDER_SCHEMA_VERSION, run: migrateTemplateOrder },
+  { version: NULLABLE_DEBT_AMOUNT_SCHEMA_VERSION, run: migrateNullableDebtAmount },
+  { version: DEBT_ORDER_SCHEMA_VERSION, run: migrateDebtOrder },
+]
 
 const readUserVersion = (db: Database): number => {
   const result = db.exec('PRAGMA user_version')

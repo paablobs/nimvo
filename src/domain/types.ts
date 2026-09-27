@@ -34,6 +34,7 @@ export interface RecurringDebtTemplate {
   isActive: boolean
   createdAt: Timestamp
   updatedAt: Timestamp
+  sortOrder: number
 }
 
 export interface Debt {
@@ -42,7 +43,7 @@ export interface Debt {
   templateId: string | null
   concept: string
   dueDate: CivilDate | null
-  amountCents: Cents
+  amountCents: Cents | null
   paidAt: Timestamp | null
   createdAt: Timestamp
   updatedAt: Timestamp

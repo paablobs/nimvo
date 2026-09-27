@@ -675,6 +675,11 @@ h1 {
 .template-choices legend { padding: 0 5px; color: var(--muted); font-size: 0.78rem; }
 .template-choice { padding: 11px 0; border-bottom: 1px solid var(--line); }
 .template-choice:last-child { border-bottom: 0; }
+.template-choice-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.template-order-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.template-order-actions .button { min-width: 36px; min-height: 36px; padding: 4px 9px; }
+.debt-order-actions { display: flex; gap: 6px; }
+.debt-order-actions .button { min-width: 36px; min-height: 36px; padding: 4px 9px; }
 .dialog-card input[type='radio'],
 .dialog-card input[type='checkbox'],
 .inline-form input[type='checkbox'] { width: auto; min-height: auto; padding: 0; border: 0; background: transparent; }

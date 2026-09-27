@@ -12,12 +12,48 @@ import VaultHomePage from '../vault/VaultHomePage.tsx'
 import MonthCreationDialog from './MonthCreationDialog.tsx'
 
 const month: Month = { id: 'month-1', year: 2026, month: 9, initialAmountCents: 100000, currency: 'ARS', createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z' }
-const template: RecurringDebtTemplate = { id: 'template-1', concept: 'Alquiler', defaultAmountCents: 75000, dueDay: 10, isActive: true, createdAt: month.createdAt, updatedAt: month.updatedAt }
+const template: RecurringDebtTemplate = { id: 'template-1', concept: 'Alquiler', defaultAmountCents: 75000, dueDay: 10, isActive: true, sortOrder: 0, createdAt: month.createdAt, updatedAt: month.updatedAt }
 const makeClient = (operation: (value: DomainOperation) => unknown): DatabaseClientLike => ({ open: vi.fn(async () => undefined), export: vi.fn(async () => new Uint8Array()), close: vi.fn(async () => undefined), operation: vi.fn(async (value: DomainOperation) => operation(value)) as DatabaseClientLike['operation'] })
 const makeFileAccess = (directFileAccessSupported: boolean): VaultFileAccessLike => ({ directFileAccessSupported, open: vi.fn(async () => null), saveAs: vi.fn(async () => null), write: vi.fn(async () => undefined) })
 const renderInVault = (session: VaultSession, children: React.ReactNode) => render(<ChakraProvider value={defaultSystem}><VaultProvider session={session}><MemoryRouter>{children}</MemoryRouter></VaultProvider></ChakraProvider>)
 
 describe('monthly workspace', () => {
+  it('saves template order and creates a month with an unpriced template', async () => {
+    const second = { ...template, id: 'template-2', concept: 'Servicios', defaultAmountCents: null }
+    const calls: DomainOperation[] = []
+    const session = new VaultSession({ createClient: () => makeClient((operation) => { calls.push(operation); return { month, debts: [] } }) })
+    await session.create('test-password')
+    const onCreated = vi.fn(async () => undefined)
+    const onTemplatesReordered = vi.fn(async () => undefined)
+    renderInVault(session, <MonthCreationDialog templates={[template, second]} onClose={vi.fn()} onCreated={onCreated} onTemplatesReordered={onTemplatesReordered} />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Move Servicios up' }))
+    await waitFor(() => expect(onTemplatesReordered).toHaveBeenCalled())
+    expect(calls).toContainEqual({ kind: 'templates.reorder', ids: ['template-2', 'template-1'] })
+    const names = within(screen.getByRole('group', { name: 'Active templates' })).getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim())
+    expect(names).toEqual(['Servicios', 'Alquiler'])
+
+    await user.click(screen.getByRole('button', { name: 'Create month' }))
+    await waitFor(() => expect(onCreated).toHaveBeenCalled())
+    expect(calls.find((operation) => operation.kind === 'months.createWithTemplates')).toMatchObject({
+      templateIds: [{ templateId: 'template-2', amountCents: null }, { templateId: 'template-1', amountCents: 75000 }],
+    })
+  })
+
+  it('keeps a cleared default amount pending', async () => {
+    const calls: DomainOperation[] = []
+    const session = new VaultSession({ createClient: () => makeClient((operation) => { calls.push(operation); return { month, debts: [] } }) })
+    await session.create('test-password')
+    renderInVault(session, <MonthCreationDialog templates={[template]} onClose={vi.fn()} onCreated={vi.fn(async () => undefined)} />)
+    const user = userEvent.setup()
+    await user.clear(screen.getByLabelText('Amount for Alquiler'))
+    await user.click(screen.getByRole('button', { name: 'Create month' }))
+    expect(calls.find((operation) => operation.kind === 'months.createWithTemplates')).toMatchObject({
+      templateIds: [{ templateId: template.id, amountCents: null }],
+    })
+  })
+
   it('sends active templates by default and preserves overrides in atomic create', async () => {
     const calls: DomainOperation[] = []
     const session = new VaultSession({ createClient: () => makeClient((operation) => { calls.push(operation); return { month, debts: [] } }) })

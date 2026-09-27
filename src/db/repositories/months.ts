@@ -21,7 +21,7 @@ const validateTemplateInputs = (year: number, month: number, entries: NewTemplat
   for (const entry of entries) {
     if (typeof entry === 'string') continue
     if (!entry || typeof entry.templateId !== 'string' || entry.templateId.trim() === '') throw new TypeError('Plantilla inválida')
-    if (entry.amountCents !== undefined && (!Number.isSafeInteger(entry.amountCents) || entry.amountCents <= 0)) throw new RangeError('El importe de reemplazo debe ser un entero seguro positivo')
+    if (entry.amountCents !== undefined && entry.amountCents !== null && (!Number.isSafeInteger(entry.amountCents) || entry.amountCents <= 0)) throw new RangeError('El importe de reemplazo debe ser un entero seguro positivo')
     if (entry.dueDate !== undefined && entry.dueDate !== null) {
       if (!isValidCivilDate(entry.dueDate) || !entry.dueDate.startsWith(`${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-`)) {
         throw new RangeError('Fecha de vencimiento fuera del mes creado')
@@ -98,8 +98,8 @@ export class MonthsRepository {
         const templateId = typeof entry === 'string' ? entry : entry.templateId
         const override = typeof entry === 'string' ? undefined : entry.amountCents
         const template = required(templates.getById(templateId), 'recurring debt template')
-        const amountCents: number = override ?? template.defaultAmountCents ?? 0
-        if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw new RangeError('La plantilla requiere un importe positivo')
+        const amountCents = override !== undefined ? override : (template.defaultAmountCents || null)
+        if (amountCents !== null && (!Number.isSafeInteger(amountCents) || amountCents <= 0)) throw new RangeError('La plantilla requiere un importe positivo')
         const dueDate = typeof entry === 'string' ? (template.dueDay === null ? null : `${input.year.toString().padStart(4, '0')}-${input.month.toString().padStart(2, '0')}-${adjustDueDayToMonth(template.dueDay, input.year, input.month).toString().padStart(2, '0')}`) : entry.dueDate === undefined ? (template.dueDay === null ? null : `${input.year.toString().padStart(4, '0')}-${input.month.toString().padStart(2, '0')}-${adjustDueDayToMonth(template.dueDay ?? 1, input.year, input.month).toString().padStart(2, '0')}`) : entry.dueDate
         return debtsRepository.create({ monthId: month.id, templateId, concept: template.concept, amountCents, dueDate, paidAt: null })
       })

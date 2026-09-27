@@ -58,8 +58,9 @@ const mutationKinds = new Set([
   'categories.create', 'categories.update', 'categories.delete',
   'categories.archive', 'categories.restore',
   'templates.create', 'templates.update', 'templates.delete',
-  'templates.archive', 'templates.restore',
+  'templates.archive', 'templates.restore', 'templates.reorder',
   'debts.create', 'debts.update', 'debts.delete',
+  'debts.reorder',
   'expenses.create', 'expenses.update', 'expenses.delete',
 ])
 

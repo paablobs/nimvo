@@ -51,9 +51,10 @@ interface Props {
   currency?: CurrencyCode
   onClose: () => void
   onCreated: (month: MonthCreated) => Promise<void>
+  onTemplatesReordered?: () => Promise<void>
 }
 
-export default function MonthCreationDialog({ existingMonths = [], templates, currency = DEFAULT_CURRENCY, onClose, onCreated }: Props) {
+export default function MonthCreationDialog({ existingMonths = [], templates, currency = DEFAULT_CURRENCY, onClose, onCreated, onTemplatesReordered }: Props) {
   const vault = useVaultSession()
   const { locale, numberFormat, t } = useI18n()
   const today = useMemo(() => new Date(), [])
@@ -73,7 +74,35 @@ export default function MonthCreationDialog({ existingMonths = [], templates, cu
   ))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [reordering, setReordering] = useState(false)
+  const [templateOrder, setTemplateOrder] = useState(() => templates.map((template) => template.id))
+  const orderedTemplates = templateOrder.map((id) => templates.find((template) => template.id === id)).filter((template): template is RecurringDebtTemplate => template !== undefined)
+  const activeTemplates = orderedTemplates.filter((template) => template.isActive)
   const previousNumberFormat = useRef(numberFormat)
+
+  async function moveTemplate(id: string, direction: -1 | 1) {
+    if (reordering || busy) return
+    const activeIds = activeTemplates.map((template) => template.id)
+    const activeIndex = activeIds.indexOf(id)
+    const neighborId = activeIds[activeIndex + direction]
+    if (!neighborId) return
+    const next = [...templateOrder]
+    const source = next.indexOf(id)
+    const target = next.indexOf(neighborId)
+    ;[next[source], next[target]] = [next[target], next[source]]
+    setTemplateOrder(next)
+    setError('')
+    setReordering(true)
+    try {
+      await vault.operation({ kind: 'templates.reorder', ids: next })
+      await onTemplatesReordered?.()
+    } catch {
+      setTemplateOrder(templateOrder)
+      setError(t('templateOrderError'))
+    } finally {
+      setReordering(false)
+    }
+  }
 
   useEffect(() => {
     if (previousNumberFormat.current === numberFormat) return
@@ -132,11 +161,12 @@ export default function MonthCreationDialog({ existingMonths = [], templates, cu
       setError(t('duplicateMonth'))
       return
     }
-    const selected = Object.entries(choices).filter(([, choice]) => choice.selected)
-    const templateIds: Array<{ templateId: string; amountCents: number; dueDate?: string | null }> = []
-    for (const [templateId, choice] of selected) {
-      const amount = parseMoneyToCents(choice.amount, numberFormat)
-      if (amount === null || amount <= 0 || amount > MAX_AMOUNT_CENTS) {
+    const templateIds: Array<{ templateId: string; amountCents: number | null; dueDate?: string | null }> = []
+    for (const template of activeTemplates) {
+      const choice = choices[template.id]
+      if (!choice?.selected) continue
+      const amount = choice.amount.trim() === '' ? null : parseMoneyToCents(choice.amount, numberFormat)
+      if (choice.amount.trim() !== '' && (amount === null || amount <= 0 || amount > MAX_AMOUNT_CENTS)) {
         setError(t('templateAmountInvalid'))
         return
       }
@@ -144,7 +174,7 @@ export default function MonthCreationDialog({ existingMonths = [], templates, cu
         setError(t('dateInvalid'))
         return
       }
-      templateIds.push({ templateId, amountCents: amount, dueDate: choice.dueDate })
+      templateIds.push({ templateId: template.id, amountCents: amount, dueDate: choice.dueDate })
     }
     setBusy(true)
     try {
@@ -185,12 +215,12 @@ export default function MonthCreationDialog({ existingMonths = [], templates, cu
           </fieldset>
           <fieldset className="template-choices">
             <legend>{t('activeTemplates')}</legend>
-            {templates.filter((template) => template.isActive).length === 0 && <p className="empty-note">{t('noActiveTemplates')}</p>}
-            {templates.filter((template) => template.isActive).map((template) => {
+            {activeTemplates.length === 0 && <p className="empty-note">{t('noActiveTemplates')}</p>}
+            {activeTemplates.map((template, index) => {
               const choice = choices[template.id] ?? { selected: true, amount: '', dueDate: dateForTemplate(template, year, month), dueDateCustom: false }
               return (
                 <div className="template-choice" key={template.id}>
-                  <label className="checkbox-label"><input type="checkbox" checked={choice.selected} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, selected: event.target.checked } }))} /> {template.concept}</label>
+                  <div className="template-choice-heading"><label className="checkbox-label"><input type="checkbox" checked={choice.selected} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, selected: event.target.checked } }))} /> {template.concept}</label><div className="template-order-actions"><Button className="button button-small" type="button" aria-label={t('moveTemplateUp', { concept: template.concept })} onClick={() => void moveTemplate(template.id, -1)} disabled={index === 0 || busy || reordering}>↑</Button><Button className="button button-small" type="button" aria-label={t('moveTemplateDown', { concept: template.concept })} onClick={() => void moveTemplate(template.id, 1)} disabled={index === activeTemplates.length - 1 || busy || reordering}>↓</Button></div></div>
                   {choice.selected && <div className="template-overrides">
                     <label>{t('amount')} <ArsMoneyInput locale={numberFormat} aria-label={t('amountFor', { concept: template.concept })} value={choice.amount} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, amount: event.target.value } }))} /></label>
                     <label>{t('dueDate')} <Input aria-label={t('dueFor', { concept: template.concept })} type="date" value={choice.dueDate ?? ''} onChange={(event) => setChoices((current) => ({ ...current, [template.id]: { ...choice, dueDate: event.target.value ? dateForPeriod(event.target.value, year, month) : null, dueDateCustom: true } }))} /></label>
@@ -200,7 +230,7 @@ export default function MonthCreationDialog({ existingMonths = [], templates, cu
             })}
           </fieldset>
           {error && <p className="form-message error" role="alert">{error}</p>}
-          <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy}>{t('monthCreate')}</Button><Button className="button button-secondary" type="button" onClick={onClose} disabled={busy}>{t('cancel')}</Button></div>
+          <div className="form-actions"><Button className="button button-primary" type="submit" loading={busy} disabled={busy || reordering}>{t('monthCreate')}</Button><Button className="button button-secondary" type="button" onClick={onClose} disabled={busy || reordering}>{t('cancel')}</Button></div>
         </form>
     </AccessibleDialog>
   )
