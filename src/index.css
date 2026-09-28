@@ -12,11 +12,11 @@
   --danger: #a2312f;
   --success: #165f58;
   --warning: #805600;
-  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
+  --font-body: 'Lexend Variable', 'Lexend', sans-serif;
   color: var(--text);
   background: var(--bg);
   color-scheme: light;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -447,7 +447,7 @@ h1 {
 .form-actions button {
   min-height: 45px;
   border-radius: 2px !important;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.88rem;
 }
 

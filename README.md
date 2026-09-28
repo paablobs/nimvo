@@ -156,7 +156,7 @@ Tablas principales:
 - sql.js y SQLite WebAssembly.
 - Web Crypto API.
 - Zod.
-- JetBrains Mono empaquetada con la aplicación.
+- Lexend variable, autohospedada y empaquetada con la aplicación mediante `@fontsource-variable/lexend` bajo SIL OFL 1.1.
 - Vitest, React Testing Library y jsdom.
 - Playwright, Chromium, Firefox y axe-core.
 - Oxlint.
@@ -185,7 +185,7 @@ Las pruebas cubren cálculos monetarios, migraciones y repositorios, cifrado y c
 
 El build genera archivos estáticos en `dist/`. El hosting debe servir `index.html` como fallback para las rutas de React Router.
 
-La fuente, SQLite WASM y el resto de los recursos se empaquetan con la aplicación. Una pestaña que ya terminó de cargar puede seguir operando sin red. No hay service worker ni caché PWA, por lo que recargar o abrir la aplicación sin conexión requiere que el servidor local o el hosting sigan disponibles.
+La fuente Lexend, SQLite WASM y el resto de los recursos se empaquetan con la aplicación. `index.html` precarga la fuente desde la misma URL local compatible con la ruta base, y el navegador puede reutilizarla desde su caché sin contactar Google Fonts ni otro CDN. Una pestaña que ya terminó de cargar puede seguir operando sin red. No hay service worker ni caché PWA, por lo que recargar o abrir la aplicación sin conexión requiere que el servidor local o el hosting sigan disponibles.
 
 El acceso directo al sistema de archivos requiere un contexto seguro: HTTPS en producción o localhost durante el desarrollo.
 
@@ -271,7 +271,7 @@ npm run build
 
 Pushes to `main` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. The project site uses `/nimvo/` as its base path and includes a `404.html` fallback for React Router routes.
 
-The application bundles its source, SQLite WASM, and fonts. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
+The application bundles its source, SQLite WASM, and the Lexend font. `index.html` preloads the font from a local URL that respects the configured base path, so the browser can cache it without contacting Google Fonts or another CDN. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
 
 ## Current limitations
 
