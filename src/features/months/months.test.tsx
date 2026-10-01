@@ -55,6 +55,7 @@ describe('monthly workspace', () => {
   })
 
   it('sends active templates by default and preserves overrides in atomic create', async () => {
+    const today = new Date()
     const calls: DomainOperation[] = []
     const session = new VaultSession({ createClient: () => makeClient((operation) => { calls.push(operation); return { month, debts: [] } }) })
     await session.create('test-password')
@@ -69,7 +70,7 @@ describe('monthly workspace', () => {
     await user.click(screen.getByRole('button', { name: 'Create month' }))
     await waitFor(() => expect(onCreated).toHaveBeenCalled())
     const operation = calls.find((value) => value.kind === 'months.createWithTemplates')
-    expect(operation).toMatchObject({ kind: 'months.createWithTemplates', input: { year: 2026, month: 9, initialAmountCents: -100000 }, templateIds: [{ templateId: 'template-1', amountCents: 90000, dueDate: null }] })
+    expect(operation).toMatchObject({ kind: 'months.createWithTemplates', input: { year: today.getFullYear(), month: today.getMonth() + 1, initialAmountCents: -100000 }, templateIds: [{ templateId: 'template-1', amountCents: 90000, dueDate: null }] })
   })
 
   it('recomputes default due dates when changing period and clamps day 31', async () => {

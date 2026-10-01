@@ -13,6 +13,7 @@
   --success: #165f58;
   --warning: #805600;
   --font-body: 'Lexend Variable', 'Lexend', sans-serif;
+  --font-numeric: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   color: var(--text);
   background: var(--bg);
   color-scheme: light;
@@ -81,6 +82,13 @@ body {
 button,
 input {
   font: inherit;
+}
+
+input[type='date'],
+input[type='number'],
+input[inputmode='decimal'] {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
 }
 
 button,
@@ -635,10 +643,13 @@ h1 {
 .summary-cell:last-child { border-right: 0; }
 .summary-cell-header { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .summary-cell span { color: var(--muted); font-size: 0.78rem; }
-.summary-cell strong { font-size: clamp(1rem, 2.2vw, 1.5rem); font-weight: 500; font-variant-numeric: tabular-nums; }
+.summary-cell strong { font-size: clamp(1rem, 2.2vw, 1.5rem); font-weight: 500; font-family: var(--font-numeric); font-variant-numeric: tabular-nums; }
 .summary-cell strong.positive-amount { color: var(--success); }
 .summary-cell strong.negative-amount { color: var(--danger); }
 .amount-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.numeric-value,
+.expense-summary .section-heading strong,
+.expense-summary li strong { font-family: var(--font-numeric); font-variant-numeric: tabular-nums; }
 
 .panel { padding: 24px 0; border-top: 1px solid var(--line); }
 .section-heading h2 { margin: 0; font-size: 1.45rem; font-weight: 500; }

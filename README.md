@@ -156,7 +156,7 @@ Tablas principales:
 - sql.js y SQLite WebAssembly.
 - Web Crypto API.
 - Zod.
-- Lexend variable, autohospedada y empaquetada con la aplicación mediante `@fontsource-variable/lexend` bajo SIL OFL 1.1.
+- Lexend variable, autohospedada y empaquetada con la aplicación mediante `@fontsource-variable/lexend` bajo SIL OFL 1.1. Los importes, fechas y campos numéricos usan la fuente monoespaciada del sistema.
 - Vitest, React Testing Library y jsdom.
 - Playwright, Chromium, Firefox y axe-core.
 - Oxlint.
@@ -271,7 +271,7 @@ npm run build
 
 Pushes to `main` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. The project site uses `/nimvo/` as its base path and includes a `404.html` fallback for React Router routes.
 
-The application bundles its source, SQLite WASM, and the Lexend font. `index.html` preloads the font from a local URL that respects the configured base path, so the browser can cache it without contacting Google Fonts or another CDN. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
+The application bundles its source, SQLite WASM, and the Lexend font. Amounts, dates, and numeric fields use the system monospace font. `index.html` preloads Lexend from a local URL that respects the configured base path, so the browser can cache it without contacting Google Fonts or another CDN. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
 
 ## Current limitations
 

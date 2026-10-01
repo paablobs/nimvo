@@ -100,14 +100,14 @@ function HistoryRow({ row, detailId, expanded, onToggle, translator, locale, num
   return <>
     <tr>
       <th scope="row" className="history-month-cell"><span>{month}</span><Link to={`/boveda?month=${encodeURIComponent(row.monthId)}`}>{translator('backToMonth')}</Link></th>
-      <td className="amount-cell">{formatCurrency(row.initialAmountCents, currency, { locale: numberFormat })}</td>
-      <td className="amount-cell">{formatCurrency(row.debtTotal, currency, { locale: numberFormat })}</td>
-      <td className="amount-cell">{formatCurrency(row.debtPending, currency, { locale: numberFormat })}</td>
-      <td className="amount-cell">{formatCurrency(row.dailyExpenses, currency, { locale: numberFormat })}</td>
-      <td className="amount-cell">{formatCurrency(row.balance, currency, { locale: numberFormat })}</td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.initialAmountCents, currency, { locale: numberFormat })}</span></td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.debtTotal, currency, { locale: numberFormat })}</span></td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.debtPending, currency, { locale: numberFormat })}</span></td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.dailyExpenses, currency, { locale: numberFormat })}</span></td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.balance, currency, { locale: numberFormat })}</span></td>
       <td className="history-detail-cell"><button className="button button-small" type="button" aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>{expanded ? translator('hide') : translator('show')} {translator('breakdown')}<span className="sr-only"> {translator('breakdownOf', { month })}</span></button></td>
     </tr>
-    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>{translator('categoryBreakdownTitle', { month })}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`${translator('category')} ${month}`}><thead><tr><th scope="col">{translator('category')}</th><th scope="col">{translator('status')}</th><th scope="col" className="amount-cell">{translator('expensesEyebrow')}</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">{translator('archived')}</span> : translator('active')}</td><td className="amount-cell">{formatCurrency(category.amountCents, currency, { locale: numberFormat })}</td></tr>)}</tbody></table>}</div></td></tr>}
+    {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>{translator('categoryBreakdownTitle', { month })}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`${translator('category')} ${month}`}><thead><tr><th scope="col">{translator('category')}</th><th scope="col">{translator('status')}</th><th scope="col" className="amount-cell">{translator('expensesEyebrow')}</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">{translator('archived')}</span> : translator('active')}</td><td className="amount-cell"><span className="numeric-value">{formatCurrency(category.amountCents, currency, { locale: numberFormat })}</span></td></tr>)}</tbody></table>}</div></td></tr>}
   </>
 }
 
