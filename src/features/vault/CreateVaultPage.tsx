@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useVaultSession } from './useVaultSession.ts'
 import { useI18n } from '../../i18n/useI18n.ts'
+import PasswordStrength from './PasswordStrength.tsx'
 
 const createSchema = z.object({
   password: z.string().min(8, 'passwordMin'),
@@ -64,6 +65,7 @@ function CreateVaultPage() {
           required
         />
         <p className="field-help">{t('minimumPassword')}</p>
+        <PasswordStrength password={password} />
 
         <label htmlFor="password-confirmation">{t('passwordConfirmation')}</label>
         <Input

@@ -985,3 +985,15 @@ h1 {
 .landing-features h3 { margin: 0 0 10px; font-size: 1rem; font-weight: 500; }
 .landing-features p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.65; }
 @media (max-width: 720px) { .landing-features ul { grid-template-columns: 1fr; } .landing-features { padding-bottom: 60px; } }
+
+.password-strength { min-height: 0; }
+.strength-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 4px; }
+.strength-bar span { height: 6px; border-radius: 2px; background: var(--surface-muted); }
+.password-strength[data-score='0'] .strength-bar .filled,
+.password-strength[data-score='1'] .strength-bar .filled { background: var(--danger); }
+.password-strength[data-score='2'] .strength-bar .filled { background: var(--warning); }
+.password-strength[data-score='3'] .strength-bar .filled,
+.password-strength[data-score='4'] .strength-bar .filled { background: var(--success); }
+.strength-label { margin: 6px 0 0; color: var(--muted); font-size: 0.78rem; }
+.strength-label strong { color: var(--text); font-weight: 500; }
+.strength-warning { margin: 6px 0 0; color: var(--warning); font-size: 0.78rem; line-height: 1.5; }
