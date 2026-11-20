@@ -997,3 +997,9 @@ h1 {
 .strength-label { margin: 6px 0 0; color: var(--muted); font-size: 0.78rem; }
 .strength-label strong { color: var(--text); font-weight: 500; }
 .strength-warning { margin: 6px 0 0; color: var(--warning); font-size: 0.78rem; line-height: 1.5; }
+
+.pwa-banner { position: fixed; z-index: 30; right: 16px; bottom: 16px; left: 16px; display: flex; max-width: 520px; align-items: center; justify-content: space-between; gap: 14px; margin-left: auto; padding: 12px 14px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 14%); }
+.pwa-banner p { margin: 0; font-size: 0.8rem; line-height: 1.5; }
+.pwa-banner .button { flex-shrink: 0; }
+/* Keep the footer and last rows reachable while the update banner is shown. */
+body:has(.pwa-banner) .site-footer { margin-bottom: 96px; }
