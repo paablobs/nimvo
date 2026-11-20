@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DomainOperation } from '../../db/worker/protocol.ts'
@@ -57,13 +56,13 @@ describe('DebtsTable', () => {
     await session.create('test-password')
 
     render(
-      <ChakraProvider value={defaultSystem}>
+      
         <I18nProvider>
           <VaultProvider session={session}>
             <DebtsTable monthId="month-1" debts={debts} onRefresh={async () => undefined} />
           </VaultProvider>
         </I18nProvider>
-      </ChakraProvider>,
+      ,
     )
 
     const overdue = rowFor('Past due')

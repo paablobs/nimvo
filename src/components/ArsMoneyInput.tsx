@@ -1,4 +1,4 @@
-import { Input } from '@chakra-ui/react'
+import { Input } from './controls.tsx'
 import type { ChangeEvent, ComponentProps, FocusEvent } from 'react'
 import { normalizeArsMoneyInput, sanitizeArsMoneyInput } from './arsMoneyInput.ts'
 import type { MoneyLocale } from '../domain/money.ts'

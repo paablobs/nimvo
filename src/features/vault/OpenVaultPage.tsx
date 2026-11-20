@@ -1,4 +1,4 @@
-import { Button, Input } from '@chakra-ui/react'
+import { Button, Input } from '../../components/controls.tsx'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useVaultSession } from './useVaultSession.ts'

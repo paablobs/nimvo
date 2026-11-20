@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -6,7 +5,7 @@ import Layout from './Layout.tsx'
 
 function renderLayout(path: string) {
   render(
-    <ChakraProvider value={defaultSystem}>
+    
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route element={<Layout />}>
@@ -15,7 +14,7 @@ function renderLayout(path: string) {
           </Route>
         </Routes>
       </MemoryRouter>
-    </ChakraProvider>,
+    ,
   )
 }
 

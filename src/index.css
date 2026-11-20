@@ -63,8 +63,97 @@
   color-scheme: dark;
 }
 
-* {
+/* Minimal reset (formerly provided by the UI library). */
+*,
+::before,
+::after {
   box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd,
+fieldset,
+ul,
+ol {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+table {
+  border-collapse: collapse;
+  border-color: inherit;
+  text-indent: 0;
+}
+
+svg {
+  vertical-align: middle;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  background: transparent;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button {
+  color: var(--text);
+  background: transparent;
+}
+
+.button-spinner {
+  width: 1em;
+  height: 1em;
+  margin-left: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 0.7s linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner { animation-duration: 2s; }
 }
 
 html {
@@ -653,7 +742,7 @@ h1 {
 
 .panel { padding: 24px 0; border-top: 1px solid var(--line); }
 .section-heading h2 { margin: 0; font-size: 1.45rem; font-weight: 500; }
-.table-scroll { max-width: 100%; overflow: auto; }
+.table-scroll { position: relative; max-width: 100%; overflow: auto; }
 .data-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.82rem; }
 .data-table th,
 .data-table td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -733,7 +822,7 @@ h1 {
 .history-header h1 { font-size: clamp(2rem, 5vw, 4rem); }
 .history-lede { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
 .history-empty { margin-top: 28px; }
-.history-table-scroll { max-width: 100%; margin-top: 28px; overflow: auto; border-top: 1px solid var(--line-strong); }
+.history-table-scroll { position: relative; max-width: 100%; margin-top: 28px; overflow: auto; border-top: 1px solid var(--line-strong); }
 .history-table { min-width: 960px; }
 .history-table th,
 .history-table td { padding: 14px 12px; }

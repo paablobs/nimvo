@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -13,7 +12,7 @@ describe('ArsMoneyInput', () => {
       const [value, setValue] = useState('')
       return <ArsMoneyInput aria-label="Ingresos" value={value} onChange={(event) => setValue(event.target.value)} />
     }
-    render(<ChakraProvider value={defaultSystem}><Harness /></ChakraProvider>)
+    render(<Harness />)
     const input = screen.getByLabelText('Ingresos')
     await user.type(input, '125000,456')
     expect(input).toHaveValue('125000,45')

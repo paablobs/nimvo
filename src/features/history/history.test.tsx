@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -33,7 +32,13 @@ const clientFor = (operation: (value: DomainOperation) => unknown): DatabaseClie
 })
 
 function renderHistory(session: VaultSession) {
-  return render(<ChakraProvider value={defaultSystem}><I18nProvider><VaultProvider session={session}><MemoryRouter initialEntries={['/boveda/historial']}><HistoryPage /></MemoryRouter></VaultProvider></I18nProvider></ChakraProvider>)
+  return render(
+    <I18nProvider>
+      <VaultProvider session={session}>
+        <MemoryRouter initialEntries={['/boveda/historial']}><HistoryPage /></MemoryRouter>
+      </VaultProvider>
+    </I18nProvider>,
+  )
 }
 
 describe('monthly history', () => {

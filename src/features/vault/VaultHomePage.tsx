@@ -1,4 +1,4 @@
-import { Button } from '@chakra-ui/react'
+import { Button } from '../../components/controls.tsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Category, Debt, Expense, Month, RecurringDebtTemplate } from '../../domain/types.ts'

@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -15,7 +14,7 @@ const month: Month = { id: 'month-1', year: 2026, month: 9, initialAmountCents: 
 const template: RecurringDebtTemplate = { id: 'template-1', concept: 'Alquiler', defaultAmountCents: 75000, dueDay: 10, isActive: true, sortOrder: 0, createdAt: month.createdAt, updatedAt: month.updatedAt }
 const makeClient = (operation: (value: DomainOperation) => unknown): DatabaseClientLike => ({ open: vi.fn(async () => undefined), export: vi.fn(async () => new Uint8Array()), close: vi.fn(async () => undefined), operation: vi.fn(async (value: DomainOperation) => operation(value)) as DatabaseClientLike['operation'] })
 const makeFileAccess = (directFileAccessSupported: boolean): VaultFileAccessLike => ({ directFileAccessSupported, open: vi.fn(async () => null), saveAs: vi.fn(async () => null), write: vi.fn(async () => undefined) })
-const renderInVault = (session: VaultSession, children: React.ReactNode) => render(<ChakraProvider value={defaultSystem}><VaultProvider session={session}><MemoryRouter>{children}</MemoryRouter></VaultProvider></ChakraProvider>)
+const renderInVault = (session: VaultSession, children: React.ReactNode) => render(<VaultProvider session={session}><MemoryRouter>{children}</MemoryRouter></VaultProvider>)
 
 describe('monthly workspace', () => {
   it('saves template order and creates a month with an unpriced template', async () => {
