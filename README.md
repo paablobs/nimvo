@@ -13,7 +13,7 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Registrar, editar y eliminar gastos diarios.
 - Crear, renombrar y archivar categorías.
 - Consultar gastos agrupados por categoría.
-- Comparar meses y desplegar su desglose por categoría.
+- Comparar meses, ver la variación del saldo frente al mes anterior, un gráfico de ingresos contra gastos y el desglose por categoría.
 - Guardar el archivo en una ubicación elegida o descargar una copia.
 - Avisar cuando hay cambios sin guardar antes de cerrar la pestaña.
 - Bloquear automáticamente la bóveda después de 15 minutos sin actividad, incluso si hay cambios sin guardar.
@@ -197,7 +197,7 @@ Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el
 - Sin backend, cuentas, recuperación remota ni sincronización propia.
 - Sin colaboración entre varias personas o pestañas.
 - Sin importación automática desde Excel o bancos.
-- Sin presupuestos por categoría, cuotas, conciliación bancaria ni gráficos avanzados.
+- Sin presupuestos por categoría, cuotas, conciliación bancaria ni gráficos avanzados (el historial incluye un único gráfico de barras).
 - Sin aplicación móvil nativa.
 - Sin recuperación de contraseña.
 - Cerrar con cambios sin guardar puede provocar pérdida de datos.
@@ -217,7 +217,7 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Create, edit, reorder, pay, and delete each month's fixed expenses.
 - Create, edit, and delete daily expenses.
 - Create, rename, and archive expense categories.
-- Review expenses by category and compare monthly history.
+- Review expenses by category and compare monthly history, including balance change against the previous month and an income-versus-spending chart.
 - Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
 - Automatically lock the vault after 15 minutes without activity, even when there are unsaved changes.
 - Warn about unsaved changes and switch between light and dark themes.
@@ -275,4 +275,4 @@ The application bundles its source, SQLite WASM, and the Lexend font. Amounts, d
 
 ## Current limitations
 
-Nimvo supports one currency per vault: ARS. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts, native mobile application, or password recovery.
+Nimvo supports one currency per vault (ARS, USD, or EUR) and does not convert between them. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts, native mobile application, or password recovery.

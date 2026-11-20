@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { formatCivilDate } from './dates.ts'
+import { calculateBalanceDeltas, totalSpending } from './history.ts'
 import { addCents, calculateMonthlySummary, formatCurrency, isSafeCents, parseMoneyToCents, parseSignedMoneyToCents, validateDebt, validateExpense } from './index.ts'
 
 describe('domain contracts', () => {
@@ -63,5 +65,43 @@ describe('domain contracts', () => {
       debtPending: 0,
       balance: 117_383_666,
     })
+  })
+})
+
+describe('formatCivilDate', () => {
+  it('formats the calendar date without shifting by time zone', () => {
+    expect(formatCivilDate('2026-10-05', 'en-US')).toBe('Oct 5, 2026')
+    expect(formatCivilDate('2026-01-01', 'es-AR')).toMatch(/^1 ene\.? 2026$|^1 de ene\.? de 2026$/)
+  })
+
+  it('rejects invalid civil dates', () => {
+    expect(() => formatCivilDate('2026-02-30', 'en-US')).toThrow(RangeError)
+  })
+})
+
+describe('history comparisons', () => {
+  it('computes the balance change against the previous month, newest first', () => {
+    expect(calculateBalanceDeltas([
+      { year: 2026, month: 9, balance: 90_000 },
+      { year: 2026, month: 8, balance: -11_000 },
+      { year: 2026, month: 7, balance: 5_000 },
+    ])).toEqual([101_000, -16_000, null])
+    expect(calculateBalanceDeltas([])).toEqual([])
+  })
+
+  it('compares across a year boundary', () => {
+    expect(calculateBalanceDeltas([{ year: 2026, month: 1, balance: 10 }, { year: 2025, month: 12, balance: 25 }])).toEqual([-15, null])
+  })
+
+  it('omits the change when the previous calendar month is missing', () => {
+    expect(calculateBalanceDeltas([{ year: 2026, month: 3, balance: 10 }, { year: 2026, month: 1, balance: 25 }])).toEqual([null, null])
+  })
+
+  it('rejects unsafe balances', () => {
+    expect(() => calculateBalanceDeltas([{ year: 2026, month: 2, balance: 1.5 }, { year: 2026, month: 1, balance: 1 }])).toThrow(RangeError)
+  })
+
+  it('adds fixed and daily expenses for total spending', () => {
+    expect(totalSpending({ debtTotal: 80_000, dailyExpenses: 30_000 })).toBe(110_000)
   })
 })

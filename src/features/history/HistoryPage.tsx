@@ -1,8 +1,9 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { formatCurrency } from '../../domain/money.ts'
-import type { CategoryBreakdown, MonthlyHistoryRow } from '../../domain/history.ts'
+import { calculateBalanceDeltas, type CategoryBreakdown, type MonthlyHistoryRow } from '../../domain/history.ts'
+import HistoryChart from './HistoryChart.tsx'
 import { useVaultSession } from '../vault/useVaultSession.ts'
 import { useI18n } from '../../i18n/useI18n.ts'
 
@@ -17,6 +18,7 @@ function HistoryPage() {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
   const pageId = useId().replace(/:/g, '')
+  const deltas = useMemo(() => calculateBalanceDeltas(rows), [rows])
 
   useEffect(() => {
     if (vault.status !== 'unlocked') return
@@ -60,6 +62,7 @@ function HistoryPage() {
     {loadState === 'error' && <p className="form-message error" role="alert">{error}</p>}
     {loadState === 'loading' && <p className="empty-note" role="status">{t('loadingHistory')}</p>}
     {loadState === 'ready' && rows.length === 0 && <div className="empty-state history-empty"><h2>{t('noMonths')}</h2><p>{t('historyEmpty')}</p><Link className="button button-primary" to="/boveda">{t('goToSheet')}</Link></div>}
+    {loadState === 'ready' && rows.length > 1 && <HistoryChart rows={rows} locale={locale === 'es' ? 'es-AR' : 'en-US'} />}
     {loadState === 'ready' && rows.length > 0 && <div className="history-table-scroll">
         <table className="data-table history-table" aria-label={t('monthlyHistoryLabel')}>
         <caption className="sr-only">{t('comparisonCaption')}</caption>
@@ -79,6 +82,7 @@ function HistoryPage() {
           return <HistoryRow
             key={key}
             row={row}
+            delta={deltas[index]}
             detailId={detailId}
             expanded={isExpanded}
             translator={t}
@@ -93,7 +97,7 @@ function HistoryPage() {
   </section>
 }
 
-function HistoryRow({ row, detailId, expanded, onToggle, translator, locale, numberFormat, currency }: { row: MonthlyHistoryRow; detailId: string; expanded: boolean; onToggle: () => void; translator: ReturnType<typeof useI18n>['t']; locale: string; numberFormat: 'en-US' | 'es-AR'; currency: import('../../domain/currency.ts').CurrencyCode }) {
+function HistoryRow({ row, delta, detailId, expanded, onToggle, translator, locale, numberFormat, currency }: { row: MonthlyHistoryRow; delta: number | null; detailId: string; expanded: boolean; onToggle: () => void; translator: ReturnType<typeof useI18n>['t']; locale: string; numberFormat: 'en-US' | 'es-AR'; currency: import('../../domain/currency.ts').CurrencyCode }) {
   const month = monthLabel(row, locale === 'es' ? 'es-AR' : 'en-US')
   const categories: CategoryBreakdown[] = row.categoryBreakdown
   const categoryLabel = categories.length === 0 ? translator('noCategoryExpenses') : `${categories.length} ${categories.length === 1 ? translator('categoriesCountOne') : translator('categoriesCountMany')}`
@@ -104,7 +108,7 @@ function HistoryRow({ row, detailId, expanded, onToggle, translator, locale, num
       <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.debtTotal, currency, { locale: numberFormat })}</span></td>
       <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.debtPending, currency, { locale: numberFormat })}</span></td>
       <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.dailyExpenses, currency, { locale: numberFormat })}</span></td>
-      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.balance, currency, { locale: numberFormat })}</span></td>
+      <td className="amount-cell"><span className="numeric-value">{formatCurrency(row.balance, currency, { locale: numberFormat })}</span>{delta !== null && delta !== 0 && <small className={`balance-delta ${delta > 0 ? 'positive-amount' : 'negative-amount'}`}>{translator('changeVsPrevious', { amount: `${delta > 0 ? '+' : '−'}${formatCurrency(Math.abs(delta), currency, { locale: numberFormat })}` })}</small>}</td>
       <td className="history-detail-cell"><button className="button button-small" type="button" aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>{expanded ? translator('hide') : translator('show')} {translator('breakdown')}<span className="sr-only"> {translator('breakdownOf', { month })}</span></button></td>
     </tr>
     {expanded && <tr id={detailId} className="history-detail-row"><td colSpan={7}><div className="history-breakdown"><h3>{translator('categoryBreakdownTitle', { month })}</h3>{categories.length === 0 ? <p className="empty-note">{categoryLabel}</p> : <table className="category-history-table" aria-label={`${translator('category')} ${month}`}><thead><tr><th scope="col">{translator('category')}</th><th scope="col">{translator('status')}</th><th scope="col" className="amount-cell">{translator('expensesEyebrow')}</th></tr></thead><tbody>{categories.map((category) => <tr key={category.categoryId}><th scope="row">{category.name}</th><td>{category.isArchived ? <span className="archived-label">{translator('archived')}</span> : translator('active')}</td><td className="amount-cell"><span className="numeric-value">{formatCurrency(category.amountCents, currency, { locale: numberFormat })}</span></td></tr>)}</tbody></table>}</div></td></tr>}

@@ -46,3 +46,21 @@ export const calculateMonthlyHistoryBalances = (input: MonthlyHistoryBalanceInpu
     balance: addCents(addCents(initialAmountCents, -debtTotal), -dailyExpenses),
   }
 }
+
+/**
+ * Balance change of each history row against the immediately preceding
+ * calendar month. Rows are ordered newest first. A row has no delta when the
+ * month before it is not in the history (first month or a gap), so the change
+ * is never attributed to the wrong month.
+ */
+export const calculateBalanceDeltas = (rows: readonly Pick<MonthlyHistoryRow, 'year' | 'month' | 'balance'>[]): (Cents | null)[] =>
+  rows.map((row, index) => {
+    const previous = rows[index + 1]
+    if (!previous) return null
+    const consecutive = row.year * 12 + row.month - (previous.year * 12 + previous.month) === 1
+    return consecutive ? addCents(amount(row.balance, 'balance'), -amount(previous.balance, 'balance')) : null
+  })
+
+/** Total outgoing money for a month: fixed expenses plus daily expenses. */
+export const totalSpending = (row: Pick<MonthlyHistoryRow, 'debtTotal' | 'dailyExpenses'>): Cents =>
+  addCents(amount(row.debtTotal, 'debt_total'), amount(row.dailyExpenses, 'daily_expenses'))

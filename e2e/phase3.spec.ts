@@ -90,3 +90,29 @@ test('colorea gastos fijos según vencimiento y pago', async ({ page }) => {
   const darkAxe = await new AxeBuilder({ page }).analyze()
   expect(darkAxe.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([])
 })
+
+test('muestra importe y acciones de gastos fijos sin desplazamiento horizontal en móvil', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-10T12:00:00Z'))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/crear')
+  await page.getByLabel('Password', { exact: true }).fill('mobile-layout-password')
+  await page.getByLabel('Confirm password').fill('mobile-layout-password')
+  await page.getByRole('button', { name: 'Create vault' }).click()
+  await page.getByRole('button', { name: 'New month' }).click()
+  await page.getByRole('button', { name: 'Create month' }).click()
+  await page.getByRole('button', { name: 'New fixed expense' }).click()
+  await page.getByLabel('Concept').fill('Rent')
+  await page.getByLabel('Amount (ARS)').fill('800')
+  await page.getByLabel('Due date').fill('2026-09-13')
+  await page.getByRole('button', { name: 'Save fixed expense' }).click()
+
+  const row = page.getByRole('row', { name: /Rent/ })
+  await expect(row).toBeVisible()
+  for (const target of [row.getByText(/800\.00/), row.getByRole('button', { name: 'Mark as paid' }), row.getByRole('button', { name: 'Delete' })]) {
+    const box = await target.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+  }
+  await expect(page.getByRole('columnheader', { name: 'Amount' })).toBeAttached()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+})

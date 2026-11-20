@@ -822,3 +822,77 @@ h1 {
     gap: 6px;
   }
 }
+
+/* Mobile: render fixed-expense and expense tables as stacked cards. Explicit
+   table roles in the markup preserve semantics when display is overridden. */
+@media (max-width: 760px) {
+  .summary-cell { min-height: 0; gap: 6px; padding: 14px 4px; }
+  .data-table--stacked { min-width: 0; display: block; }
+  .data-table--stacked thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .data-table--stacked tbody { display: block; }
+  .data-table--stacked tr {
+    display: grid;
+    gap: 4px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .data-table--stacked td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 6px;
+    border-bottom: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .data-table--stacked td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-align: left;
+    text-transform: uppercase;
+  }
+  .data-table--stacked td.row-actions { justify-content: flex-end; flex-wrap: wrap; }
+
+  /* History keeps its horizontal scroll but pins the month column. */
+  .history-table .history-month-cell {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 120px;
+    background: var(--bg);
+  }
+  .history-table thead th:first-child { position: sticky; left: 0; z-index: 2; background: var(--bg); }
+  .chart-scroll { overflow-x: auto; }
+  .history-chart svg { min-width: 480px; }
+}
+
+.history-chart { margin: 28px 0 0; padding: 16px 0 0; }
+.history-chart figcaption { margin-bottom: 8px; color: var(--muted); font-size: 0.78rem; font-weight: 500; text-transform: uppercase; }
+.history-chart svg { display: block; width: 100%; max-width: 760px; height: auto; }
+.chart-axis { stroke: var(--line-strong); stroke-width: 1; }
+.chart-bar--income { fill: var(--accent); background: var(--accent); }
+.chart-bar--spending { fill: var(--warning); background: var(--warning); }
+.chart-label { fill: var(--muted); font-size: 14px; font-family: var(--font-body); }
+.chart-legend { display: flex; gap: 16px; margin: 8px 0 0; padding: 0; color: var(--muted); font-size: 0.75rem; list-style: none; }
+.chart-legend li { display: flex; align-items: center; gap: 6px; }
+.chart-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.balance-delta { display: block; margin-top: 4px; font-size: 0.7rem; white-space: nowrap; }
+.balance-delta.positive-amount { color: var(--success); }
+.balance-delta.negative-amount { color: var(--danger); }
+
+.landing-features { padding: 0 0 90px; }
+.landing-features h2.eyebrow { margin-bottom: 18px; }
+.landing-features ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 40px; margin: 0; padding: 22px 0 0; border-top: 1px solid var(--line-strong); list-style: none; }
+.landing-features h3 { margin: 0 0 10px; font-size: 1rem; font-weight: 500; }
+.landing-features p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.65; }
+@media (max-width: 720px) { .landing-features ul { grid-template-columns: 1fr; } .landing-features { padding-bottom: 60px; } }
