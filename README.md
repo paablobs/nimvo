@@ -118,7 +118,7 @@ magic | versión | parámetros KDF | salt | IV | SQLite cifrado + tag
 - Un archivo alterado, truncado o abierto con otra contraseña se rechaza sin cargar datos parciales.
 - El tamaño máximo aceptado para un contenedor es 128 MiB.
 
-Los archivos del formato v1 (PBKDF2-HMAC-SHA-256 con 1.800.000 iteraciones) se siguen abriendo. **La primera vez que se guarda un archivo v1, se escribe en el formato v2, y las versiones anteriores de Nimvo no pueden abrir un archivo v2** (muestran que el archivo es de una versión más nueva). Si usás varios equipos con la misma carpeta sincronizada, actualizá Nimvo en todos antes de guardar.
+Los archivos del formato v1 (PBKDF2-HMAC-SHA-256 con 1.800.000 iteraciones) se siguen abriendo. **La primera vez que se guarda un archivo v1, se escribe en el formato v2, y las versiones anteriores de Nimvo no pueden abrir un archivo v2** (muestran que el archivo es de una versión más nueva). Al abrir un archivo v1, Nimvo muestra un aviso antes del primer guardado. Si usás varios equipos con la misma carpeta sincronizada, actualizá Nimvo en todos antes de guardar.
 
 Las versiones actuales también pueden abrir archivos `.moneo` creados por versiones anteriores. Al abrir uno, Nimvo lo trata como una importación de compatibilidad y la próxima copia se guarda como `.nimvo`; un archivo legado abierto desde el selector no queda vinculado para sobrescritura.
 
@@ -259,7 +259,7 @@ There are no required environment variables. Use `npm run build` and `npm run pr
 
 Create a new vault with a password or open an existing `.nimvo` file. Save or download a fresh copy after making changes. Keep at least one older backup, avoid editing the same copy on two devices at once, and wait for cloud-synced folders to finish syncing before switching devices.
 
-Passwords cannot be recovered. Without the password, the encrypted financial data cannot be recovered either. Current versions can import legacy `.moneo` files and save the next copy in the `.nimvo` format. Version 1 files (PBKDF2-HMAC-SHA-256, 1,800,000 iterations) still open, but the first save rewrites them as version 2, which older Nimvo versions cannot open: update Nimvo on every device that shares the synced file before saving.
+Passwords cannot be recovered. Without the password, the encrypted financial data cannot be recovered either. Current versions can import legacy `.moneo` files and save the next copy in the `.nimvo` format. Version 1 files (PBKDF2-HMAC-SHA-256, 1,800,000 iterations) still open, but the first save rewrites them as version 2, which older Nimvo versions cannot open: Nimvo shows a notice when you open a version 1 file, before the first save; update Nimvo on every device that shares the synced file before saving.
 
 ## Security
 

@@ -52,9 +52,10 @@ export interface DerivedKeys {
  * Run this inside a Worker so the main thread never blocks.
  */
 export async function deriveVaultKeys(password: Uint8Array, salt: Uint8Array, params: Argon2Params): Promise<DerivedKeys> {
-  if (!isValidArgon2Params(params)) throw new RangeError('Argon2id parameters are out of bounds')
   let raw: Uint8Array | undefined
   try {
+    // Inside the try so the password is zeroed even when the parameters are rejected.
+    if (!isValidArgon2Params(params)) throw new RangeError('Argon2id parameters are out of bounds')
     raw = await argon2id({
       password,
       salt,

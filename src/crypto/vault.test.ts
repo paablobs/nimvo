@@ -51,6 +51,12 @@ describe('Argon2id key derivation', () => {
     await expect(deriveVaultKeys(new Uint8Array(1), salt, { memoryKiB: ARGON2_MIN_MEMORY_KIB, timeCost: 1, parallelism: 1 })).rejects.toThrow(RangeError)
     await expect(deriveVaultKeys(new Uint8Array(1), salt, { memoryKiB: ARGON2_MIN_MEMORY_KIB, timeCost: 2, parallelism: 2 })).rejects.toThrow(RangeError)
   })
+
+  it('zeroes the password even when the parameters are rejected', async () => {
+    const pass = new TextEncoder().encode('secret')
+    await expect(deriveVaultKeys(pass, new Uint8Array(16), { memoryKiB: 1, timeCost: 2, parallelism: 1 })).rejects.toThrow(RangeError)
+    expect(pass.every((byte) => byte === 0)).toBe(true)
+  })
 })
 
 describe('Nimvo v2 container', () => {

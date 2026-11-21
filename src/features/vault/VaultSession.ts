@@ -33,6 +33,8 @@ export interface VaultSnapshot {
   activeFileName: string | null
   directFileAccessSupported: boolean
   currency: CurrencyCode
+  /** The open file uses an older container format; the next save rewrites it in the current one. */
+  formatUpgradePending: boolean
 }
 
 export interface DatabaseClientLike {
@@ -82,6 +84,7 @@ const initialSnapshot = (directFileAccessSupported = false): VaultSnapshot => ({
   activeFileName: null,
   directFileAccessSupported,
   currency: DEFAULT_CURRENCY,
+  formatUpgradePending: false,
 })
 
 const pad = (value: number): string => String(value).padStart(2, '0')
@@ -180,7 +183,7 @@ export class VaultSession {
         candidate = undefined
         key = undefined
         this.activeTarget = undefined
-        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null, currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY })
+        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null, formatUpgradePending: false, currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY })
       } catch (error) {
         // Once the new state is committed the previous client and key are gone; never roll back to them.
         if (committed) throw error
@@ -234,6 +237,8 @@ export class VaultSession {
           error: null,
           activeFileName: selection && decrypted.format === 'nimvo' ? selection.name : null,
           currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY,
+          // A v1 or legacy file is rewritten in the current format by the next save.
+          formatUpgradePending: decrypted.sourceVersion === 1 && decrypted.vaultKey.kind === 'argon2id',
         })
       } catch (error) {
         if (committed) throw error
@@ -317,7 +322,7 @@ export class VaultSession {
     try {
       const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' })
       await this.options.download(blob, filename)
-      this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null })
+      this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
       return { filename, exportedAt }
     } catch (error) {
       this.setSnapshot({ error: 'No se pudo guardar la copia.' })
@@ -369,7 +374,7 @@ export class VaultSession {
           await this.options.download(blob, suggestedName)
         }
         this.activeTarget = selectedTarget
-        this.setSnapshot({ activeFileName: selectedTarget ? selectedName : null, dirty: false, lastExportAt: exportedAt, error: null })
+        this.setSnapshot({ activeFileName: selectedTarget ? selectedName : null, dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
         return { filename: selectedTarget ? selectedName : suggestedName, exportedAt }
       } catch (error) {
         if (isAbortError(error)) return null
@@ -408,7 +413,7 @@ export class VaultSession {
       try {
         await this.fileAccess.write(selection.target, bytes)
         this.activeTarget = selection.target
-        this.setSnapshot({ activeFileName: selection.name, dirty: false, lastExportAt: exportedAt, error: null })
+        this.setSnapshot({ activeFileName: selection.name, dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
         return { filename: selection.name, exportedAt }
       } catch (error) {
         if (isAbortError(error)) return null

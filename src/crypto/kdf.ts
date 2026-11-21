@@ -9,6 +9,14 @@ export interface Kdf {
   derive(password: Uint8Array, salt: Uint8Array, params: Argon2Params): Promise<DerivedKeys>
 }
 
+/**
+ * Upper bound for one derivation. The largest accepted parameters (256 MiB, 10
+ * passes) take well under a minute on a desktop; this only guards against a
+ * browser killing the worker without any event, which would otherwise hang the
+ * session's serialized queue (and with it save and lock) forever.
+ */
+export const KDF_TIMEOUT_MS = 120_000
+
 /** Derives in a fresh module Worker and terminates it, releasing the WASM memory. */
 export const workerKdf: Kdf = {
   defaultParams: ARGON2_DEFAULT_PARAMS,
@@ -25,11 +33,14 @@ export const workerKdf: Kdf = {
       // Once posted, the password buffer is transferred (detached) and must not be
       // touched again: the worker zeroes it. Every path below settles the promise,
       // because a hung derivation would block the session's serialized queue.
+      const watchdog = setTimeout(() => fail(), KDF_TIMEOUT_MS)
       const fail = () => {
+        clearTimeout(watchdog)
         worker.terminate()
         reject(new Error('Key derivation failed'))
       }
       worker.onmessage = (event: MessageEvent<KdfResponse>) => {
+        clearTimeout(watchdog)
         worker.terminate()
         if (event.data.ok) resolve({ encryptKey: event.data.encryptKey, decryptKey: event.data.decryptKey })
         else reject(new Error('Key derivation failed'))
@@ -40,6 +51,7 @@ export const workerKdf: Kdf = {
       try {
         worker.postMessage(request, [password.buffer])
       } catch (error) {
+        clearTimeout(watchdog)
         worker.terminate()
         password.fill(0)
         reject(error)

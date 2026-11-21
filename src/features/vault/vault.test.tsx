@@ -174,6 +174,26 @@ describe('VaultSession', () => {
     expect(wrong.getSnapshot().status).toBe('error')
   })
 
+  it('flags the pending format upgrade for v1 files only, until the first save', async () => {
+    const key = await importPasswordKey('password-1')
+    const v1 = await encryptSqliteBytes(new Uint8Array([1]), key, { iterations: 1_000 })
+    const session = new VaultSession({ createClient: () => fakeClient(), download: () => undefined })
+    expect(session.getSnapshot().formatUpgradePending).toBe(false)
+    await session.open(v1, 'password-1')
+    expect(session.getSnapshot().formatUpgradePending).toBe(true)
+    await session.save()
+    expect(session.getSnapshot().formatUpgradePending).toBe(false)
+
+    const created = new VaultSession({ createClient: () => fakeClient(), download: () => undefined })
+    await created.create('password-1')
+    expect(created.getSnapshot().formatUpgradePending).toBe(false)
+
+    // A writer that still produces v1 files has nothing to warn about.
+    const keepsV1 = new VaultSession({ createClient: () => fakeClient(), formatVersion: 1 })
+    await keepsV1.open(v1, 'password-1')
+    expect(keepsV1.getSnapshot().formatUpgradePending).toBe(false)
+  })
+
   it('keeps encrypting with the original key after a failed attempt to open another file', async () => {
     const saved: Uint8Array[] = []
     const session = new VaultSession({ createClient: () => fakeClient(), download: () => undefined, encrypt: async (plaintext, vaultKey) => { const out = await encryptVault(plaintext, vaultKey); saved.push(new Uint8Array(out)); return out } })

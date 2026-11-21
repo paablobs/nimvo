@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { workerKdf } from './kdf.ts'
+import { KDF_TIMEOUT_MS, workerKdf } from './kdf.ts'
 
 const params = { memoryKiB: 19_456, timeCost: 2, parallelism: 1 }
 
@@ -73,5 +73,33 @@ describe('workerKdf', () => {
     await expect(result).rejects.toThrow('DataCloneError')
     expect([...password]).toEqual([0, 0, 0])
     expect(StubWorker.instance.terminate).toHaveBeenCalled()
+  })
+
+  it('gives up on a worker that dies without any event, so the session queue cannot hang', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('Worker', StubWorker)
+      const { result } = start()
+      const assertion = expect(result).rejects.toThrow('Key derivation failed')
+      await vi.advanceTimersByTimeAsync(KDF_TIMEOUT_MS)
+      await assertion
+      expect(StubWorker.instance.terminate).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not time out once the worker has answered', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('Worker', StubWorker)
+      const { result } = start()
+      StubWorker.instance.onmessage?.({ data: { ok: true, encryptKey: {}, decryptKey: {} } })
+      await expect(result).resolves.toBeDefined()
+      await vi.advanceTimersByTimeAsync(KDF_TIMEOUT_MS * 2)
+      expect(StubWorker.instance.terminate).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
