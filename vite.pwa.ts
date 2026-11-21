@@ -16,7 +16,8 @@ async function walk(directory: string): Promise<string[]> {
 
 /**
  * Writes dist/sw.js with a precache list of the final build output. The cache
- * version hashes every precached file, so any change invalidates the old cache.
+ * version is a content hash of every precached file: any change invalidates the
+ * old cache and an unchanged build produces a byte-identical worker.
  */
 export function precacheServiceWorker(): Plugin {
   let config: ResolvedConfig
@@ -35,7 +36,7 @@ export function precacheServiceWorker(): Plugin {
         hash.update(await readFile(join(outDir, file)))
       }
       const template = await readFile(join(config.root, 'src/pwa/sw.template.js'), 'utf8')
-      await writeFile(join(outDir, 'sw.js'), renderServiceWorker(template, files, `${Date.now().toString(16).padStart(12, '0')}-${hash.digest('hex').slice(0, 16)}`))
+      await writeFile(join(outDir, 'sw.js'), renderServiceWorker(template, files, hash.digest('hex').slice(0, 16)))
     },
   }
 }

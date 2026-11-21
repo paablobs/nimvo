@@ -76,13 +76,11 @@ async function legacyFile(password: string): Promise<Uint8Array> {
 }
 
 const renderCreate = (session: VaultSession) => render(
-  
-    <VaultProvider session={session}>
-      <MemoryRouter>
-        <CreateVaultPage />
-      </MemoryRouter>
-    </VaultProvider>
-  ,
+  <VaultProvider session={session}>
+    <MemoryRouter>
+      <CreateVaultPage />
+    </MemoryRouter>
+  </VaultProvider>,
 )
 
 describe('VaultSession', () => {
@@ -329,9 +327,7 @@ describe('vault UI', () => {
   it('installs beforeunload only while dirty', async () => {
     const session = new VaultSession({ createClient: () => fakeClient() })
     render(
-      
-        <VaultProvider session={session}><span>probe</span></VaultProvider>
-      ,
+      <VaultProvider session={session}><span>probe</span></VaultProvider>,
     )
     await act(() => session.create('password-1'))
     const dirtyEvent = new Event('beforeunload', { cancelable: true })

@@ -14,6 +14,7 @@ class FakeWorker {
 }
 
 class FakeRegistration {
+  update = vi.fn(async () => undefined)
   waiting: FakeWorker | null = null
   installing: FakeWorker | null = null
   private updateFound: Listener[] = []
@@ -104,6 +105,34 @@ describe('useServiceWorker', () => {
     expect(result.current.updateReady).toBe(true)
     act(() => { result.current.applyUpdate() })
     expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('treats the first controller change of an uncontrolled page as the initial claim, later ones as updates', async () => {
+    const container = installServiceWorkerMock(null, new FakeRegistration())
+    const { result } = renderHook(() => useServiceWorker())
+    await act(async () => { await Promise.resolve() })
+    act(() => { container.emit('controllerchange') })
+    expect(result.current.updateReady).toBe(false)
+    act(() => { container.emit('controllerchange') })
+    expect(result.current.updateReady).toBe(true)
+  })
+
+  it('checks for a new version periodically and when the tab becomes visible again', async () => {
+    vi.useFakeTimers()
+    try {
+      const registration = new FakeRegistration()
+      installServiceWorkerMock({}, registration)
+      renderHook(() => useServiceWorker())
+      await act(async () => { await Promise.resolve() })
+      expect(registration.update).not.toHaveBeenCalled()
+      await act(async () => { vi.advanceTimersByTime(60 * 60 * 1000) })
+      expect(registration.update).toHaveBeenCalledTimes(1)
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
+      act(() => { document.dispatchEvent(new Event('visibilitychange')) })
+      expect(registration.update).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does nothing outside production builds', () => {

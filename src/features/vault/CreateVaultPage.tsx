@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useVaultSession } from './useVaultSession.ts'
 import { useI18n } from '../../i18n/useI18n.ts'
-import PasswordStrength from './PasswordStrength.tsx'
+import PasswordStrength, { PASSWORD_STRENGTH_ID } from './PasswordStrength.tsx'
 
 const createSchema = z.object({
   password: z.string().min(8, 'passwordMin'),
@@ -61,6 +61,7 @@ function CreateVaultPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete="new-password"
+          aria-describedby={PASSWORD_STRENGTH_ID}
           minLength={8}
           required
         />

@@ -5,16 +5,14 @@ import Layout from './Layout.tsx'
 
 function renderLayout(path: string) {
   render(
-    
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route element={<Layout />}>
-    <Route path="/boveda" element={<div>Vault</div>} />
-    <Route path="/boveda/historial" element={<div>History</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    ,
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/boveda" element={<div>Vault</div>} />
+          <Route path="/boveda/historial" element={<div>History</div>} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
   )
 }
 

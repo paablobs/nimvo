@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+
 export interface ServiceWorkerState {
   /** The app shell has been cached and can start without a network. */
   offlineReady: boolean
@@ -25,12 +27,23 @@ export function useServiceWorker(): ServiceWorkerState {
     let cancelled = false
     const base = import.meta.env.BASE_URL
     const container = navigator.serviceWorker
-    const hadController = container.controller !== null
+    let hadController = container.controller !== null
 
-    // Another tab applied an update: this tab now runs under the new worker but
-    // still holds old code (and possibly unsaved work), so offer a guarded reload.
-    const handleControllerChange = () => { if (hadController && !cancelled) setUpdateReady(true) }
+    // The first change on an uncontrolled page is the initial `clients.claim()`.
+    // Any later change means another tab applied an update: this tab now runs
+    // under the new worker but still holds old code (and possibly unsaved work),
+    // so offer a guarded reload.
+    const handleControllerChange = () => {
+      if (cancelled) return
+      if (hadController) setUpdateReady(true)
+      else hadController = true
+    }
     container.addEventListener('controllerchange', handleControllerChange)
+
+    // A SPA never navigates, so the browser would not re-check sw.js on its own.
+    let updateTimer: number | undefined
+    const checkForUpdate = () => { void registration.current?.update().catch(() => undefined) }
+    const handleVisibility = () => { if (document.visibilityState === 'visible') checkForUpdate() }
 
     const track = (worker: ServiceWorker) => {
       worker.addEventListener('statechange', () => {
@@ -46,11 +59,15 @@ export function useServiceWorker(): ServiceWorkerState {
       if (current.waiting && navigator.serviceWorker.controller) setUpdateReady(true)
       if (current.installing) track(current.installing)
       current.addEventListener('updatefound', () => { if (current.installing) track(current.installing) })
+      updateTimer = window.setInterval(checkForUpdate, UPDATE_CHECK_INTERVAL_MS)
+      document.addEventListener('visibilitychange', handleVisibility)
     }).catch(() => { /* Offline support is optional; the app works without it. */ })
 
     return () => {
       cancelled = true
       container.removeEventListener('controllerchange', handleControllerChange)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (updateTimer !== undefined) window.clearInterval(updateTimer)
     }
   }, [])
 

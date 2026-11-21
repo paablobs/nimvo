@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import template from './sw.template.js?raw'
 import { renderServiceWorker, selectPrecacheFiles } from './precache.ts'
 
-
 describe('selectPrecacheFiles', () => {
   it('keeps the app shell, assets, fonts and icons and drops non-app files', () => {
     expect(selectPrecacheFiles([
@@ -26,14 +25,14 @@ describe('selectPrecacheFiles', () => {
 
 describe('renderServiceWorker', () => {
   it('embeds the version and file list as data, not code', () => {
-    const output = renderServiceWorker(template, ['index.html', "assets/it's$&.js"], '0123456789ab-abcdef0123456789')
-    expect(output).toContain('const PRECACHE_VERSION = "0123456789ab-abcdef0123456789"')
+    const output = renderServiceWorker(template, ['index.html', "assets/it's$&.js"], 'abcdef0123456789')
+    expect(output).toContain('const PRECACHE_VERSION = "abcdef0123456789"')
     expect(output).toContain('const PRECACHE_FILES = ["index.html","assets/it\'s$&.js"]')
     expect(output).not.toContain('__PRECACHE')
   })
 
   it('rejects an unexpected version and templates without placeholders', () => {
     expect(() => renderServiceWorker(template, ['index.html'], "'; alert(1)//")).toThrow('Invalid precache version')
-    expect(() => renderServiceWorker('const x = 1', ['index.html'], '0123456789ab-abcdef0123456789')).toThrow('placeholders')
+    expect(() => renderServiceWorker('const x = 1', ['index.html'], 'abcdef0123456789')).toThrow('placeholders')
   })
 })

@@ -12,11 +12,11 @@ export function selectPrecacheFiles(files: readonly string[]): string[] {
 
 /**
  * Fills the service worker template with the precache version and file list.
- * The version is `<12 hex digit build timestamp>-<16 hex digit content hash>`,
- * so versions sort chronologically.
+ * The version is a 16 hex digit hash of the precached content only, so
+ * rebuilding unchanged output yields an identical worker and no update prompt.
  */
 export function renderServiceWorker(template: string, files: readonly string[], version: string): string {
-  if (!/^[a-f0-9]{12}-[a-f0-9]{16}$/.test(version)) throw new Error('Invalid precache version')
+  if (!/^[a-f0-9]{16}$/.test(version)) throw new Error('Invalid precache version')
   const versionToken = "'__PRECACHE_VERSION__'"
   const filesToken = "['__PRECACHE_FILES__']"
   if (!template.includes(versionToken) || !template.includes(filesToken)) {

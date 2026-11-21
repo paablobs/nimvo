@@ -18,6 +18,11 @@ const HistoryPage = lazy(() => import('../features/history/HistoryPage.tsx'))
 
 const routerBaseName = import.meta.env.BASE_URL === '/' ? '/' : import.meta.env.BASE_URL.replace(/\/$/, '')
 
+function RouteFallback() {
+  const { t } = useI18n()
+  return <p className="empty-note" role="status">{t('loadingHistory')}</p>
+}
+
 function NotFoundPage() {
   const { t } = useI18n()
   return (
@@ -43,7 +48,7 @@ function NimvoApp() {
               <Route path="/crear" element={<CreateVaultPage />} />
               <Route path="/abrir" element={<OpenVaultPage />} />
               <Route path="/boveda" element={<VaultHomePage />} />
-              <Route path="/boveda/historial" element={<RouteErrorBoundary><Suspense fallback={<p className="empty-note" role="status">…</p>}><HistoryPage /></Suspense></RouteErrorBoundary>} />
+              <Route path="/boveda/historial" element={<RouteErrorBoundary><Suspense fallback={<RouteFallback />}><HistoryPage /></Suspense></RouteErrorBoundary>} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>

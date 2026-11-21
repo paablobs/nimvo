@@ -56,13 +56,11 @@ describe('DebtsTable', () => {
     await session.create('test-password')
 
     render(
-      
-        <I18nProvider>
-          <VaultProvider session={session}>
-            <DebtsTable monthId="month-1" debts={debts} onRefresh={async () => undefined} />
-          </VaultProvider>
-        </I18nProvider>
-      ,
+      <I18nProvider>
+        <VaultProvider session={session}>
+          <DebtsTable monthId="month-1" debts={debts} onRefresh={async () => undefined} />
+        </VaultProvider>
+      </I18nProvider>,
     )
 
     const overdue = rowFor('Past due')
