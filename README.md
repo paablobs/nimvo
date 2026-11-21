@@ -20,6 +20,8 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Alternar entre tema claro y oscuro.
 - Ver las fechas de vencimiento y de los gastos en formato local (por ejemplo, `5 oct 2026`); internamente siguen guardándose como `YYYY-MM-DD`.
 - En pantallas angostas, los gastos fijos y los gastos se muestran como tarjetas apiladas, sin desplazamiento horizontal.
+- Ver un indicador de seguridad al elegir la contraseña. Solo advierte: nunca impide crear la bóveda.
+- Usar la aplicación sin conexión después de la primera carga e instalarla desde el navegador.
 
 La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. Cada bóveda guarda una moneda única: ARS (por defecto), USD o EUR. ARS y USD se muestran con `$`; EUR se muestra con `€`. Cambiar la moneda no convierte los importes: solo cambia su denominación. ARS, USD y EUR pueden mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
 
@@ -153,11 +155,12 @@ Tablas principales:
 
 - React 19 y TypeScript 6.
 - Vite 8.
-- Chakra UI 3 y Emotion.
+- Controles HTML nativos con estilos propios (sin biblioteca de componentes).
 - React Router 7.
 - sql.js y SQLite WebAssembly.
 - Web Crypto API.
 - Zod.
+- `@zxcvbn-ts` (solo listas independientes del idioma), cargado bajo demanda para el indicador de seguridad de la contraseña.
 - Lexend variable, autohospedada y empaquetada con la aplicación mediante `@fontsource-variable/lexend` bajo SIL OFL 1.1. Los importes, fechas y campos numéricos usan la fuente monoespaciada del sistema.
 - Vitest, React Testing Library y jsdom.
 - Playwright, Chromium, Firefox y axe-core.
@@ -187,7 +190,7 @@ Las pruebas cubren cálculos monetarios, migraciones y repositorios, cifrado y c
 
 El build genera archivos estáticos en `dist/`. El hosting debe servir `index.html` como fallback para las rutas de React Router.
 
-La fuente Lexend, SQLite WASM y el resto de los recursos se empaquetan con la aplicación. `index.html` precarga la fuente desde la misma URL local compatible con la ruta base, y el navegador puede reutilizarla desde su caché sin contactar Google Fonts ni otro CDN. Una pestaña que ya terminó de cargar puede seguir operando sin red. No hay service worker ni caché PWA, por lo que recargar o abrir la aplicación sin conexión requiere que el servidor local o el hosting sigan disponibles.
+La fuente Lexend, SQLite WASM y el resto de los recursos se empaquetan con la aplicación. En el build de producción, un service worker propio (`dist/sw.js`, generado por `vite.pwa.ts`) precachea únicamente los archivos estáticos de la aplicación; no cachea datos, archivos `.nimvo` ni contraseñas. Después de la primera carga, la aplicación puede abrirse y usarse sin conexión, y puede instalarse desde el navegador (`manifest.webmanifest`). Las actualizaciones nunca se aplican solas: aparece un aviso y, si hay cambios sin guardar, el botón de actualizar queda deshabilitado hasta que guardes, porque recargar descarta la bóveda abierta en memoria. En desarrollo (`npm run dev`) no se registra ningún service worker.
 
 El acceso directo al sistema de archivos requiere un contexto seguro: HTTPS en producción o localhost durante el desarrollo.
 
@@ -225,6 +228,8 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Warn about unsaved changes and switch between light and dark themes.
 - Show due and expense dates in the local format (for example `Oct 5, 2026`); they are still stored as `YYYY-MM-DD`.
 - On narrow screens, fixed expenses and expenses render as stacked cards without horizontal scrolling.
+- See a strength indicator while choosing a password. It only warns and never blocks vault creation.
+- Use the app offline after the first load and install it from the browser.
 
 Each vault uses one stored currency: ARS by default, USD, or EUR. ARS and USD use `$`; EUR uses `€`. Changing the currency changes the denomination without converting amounts. Amounts can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 Fixed expenses with an unknown amount remain pending and are excluded from totals and balance until their amount is entered.
@@ -261,7 +266,7 @@ The decrypted database remains in the SQLite Web Worker memory. Sensitive buffer
 
 ## Development
 
-The application uses React 19, TypeScript 6, Vite 8, Chakra UI 3, React Router 7, sql.js, Web Crypto, and Zod. Vitest and React Testing Library cover unit and component behavior; Playwright covers full Chromium and Firefox flows.
+The application uses React 19, TypeScript 6, Vite 8, React Router 7, sql.js, Web Crypto, Zod, and `@zxcvbn-ts` (lazy-loaded for the password indicator). Vitest and React Testing Library cover unit and component behavior; Playwright covers full Chromium and Firefox flows.
 
 ```sh
 npm run lint
@@ -275,7 +280,7 @@ npm run build
 
 Pushes to `main` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. The project site uses `/nimvo/` as its base path and includes a `404.html` fallback for React Router routes.
 
-The application bundles its source, SQLite WASM, and the Lexend font. Amounts, dates, and numeric fields use the system monospace font. `index.html` preloads Lexend from a local URL that respects the configured base path, so the browser can cache it without contacting Google Fonts or another CDN. A loaded tab can continue working without a network connection, but there is no service worker or PWA cache, so reopening or reloading the site still requires the host to be available.
+The application bundles its source, SQLite WASM, and the Lexend font. Amounts, dates, and numeric fields use the system monospace font. In production builds a small in-repo service worker (`dist/sw.js`, generated by `vite.pwa.ts`) precaches the static application files only; it never caches data, `.nimvo` files, or passwords. After the first load the app opens and works offline and can be installed from the browser (`manifest.webmanifest`). Updates are never applied automatically: a notice appears, and while there are unsaved changes the update button stays disabled until you save, because reloading discards the in-memory vault. No service worker is registered by `npm run dev`.
 
 ## Current limitations
 

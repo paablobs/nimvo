@@ -1,9 +1,10 @@
-import { Button, Input } from '@chakra-ui/react'
+import { Button, Input } from '../../components/controls.tsx'
 import { type FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useVaultSession } from './useVaultSession.ts'
 import { useI18n } from '../../i18n/useI18n.ts'
+import PasswordStrength, { PASSWORD_STRENGTH_ID } from './PasswordStrength.tsx'
 
 const createSchema = z.object({
   password: z.string().min(8, 'passwordMin'),
@@ -60,10 +61,12 @@ function CreateVaultPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete="new-password"
+          aria-describedby={PASSWORD_STRENGTH_ID}
           minLength={8}
           required
         />
         <p className="field-help">{t('minimumPassword')}</p>
+        <PasswordStrength password={password} />
 
         <label htmlFor="password-confirmation">{t('passwordConfirmation')}</label>
         <Input

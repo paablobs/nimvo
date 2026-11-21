@@ -63,8 +63,97 @@
   color-scheme: dark;
 }
 
-* {
+/* Minimal reset (formerly provided by the UI library). */
+*,
+::before,
+::after {
   box-sizing: border-box;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd,
+fieldset,
+ul,
+ol {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+table {
+  border-collapse: collapse;
+  border-color: inherit;
+  text-indent: 0;
+}
+
+svg {
+  vertical-align: middle;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  background: transparent;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button {
+  color: var(--text);
+  background: transparent;
+}
+
+.button-spinner {
+  width: 1em;
+  height: 1em;
+  margin-left: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 0.7s linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner { animation-duration: 2s; }
 }
 
 html {
@@ -653,7 +742,7 @@ h1 {
 
 .panel { padding: 24px 0; border-top: 1px solid var(--line); }
 .section-heading h2 { margin: 0; font-size: 1.45rem; font-weight: 500; }
-.table-scroll { max-width: 100%; overflow: auto; }
+.table-scroll { position: relative; max-width: 100%; overflow: auto; }
 .data-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.82rem; }
 .data-table th,
 .data-table td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -733,7 +822,7 @@ h1 {
 .history-header h1 { font-size: clamp(2rem, 5vw, 4rem); }
 .history-lede { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
 .history-empty { margin-top: 28px; }
-.history-table-scroll { max-width: 100%; margin-top: 28px; overflow: auto; border-top: 1px solid var(--line-strong); }
+.history-table-scroll { position: relative; max-width: 100%; margin-top: 28px; overflow: auto; border-top: 1px solid var(--line-strong); }
 .history-table { min-width: 960px; }
 .history-table th,
 .history-table td { padding: 14px 12px; }
@@ -896,3 +985,21 @@ h1 {
 .landing-features h3 { margin: 0 0 10px; font-size: 1rem; font-weight: 500; }
 .landing-features p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.65; }
 @media (max-width: 720px) { .landing-features ul { grid-template-columns: 1fr; } .landing-features { padding-bottom: 60px; } }
+
+.password-strength { min-height: 0; }
+.strength-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 4px; }
+.strength-bar span { height: 6px; border-radius: 2px; background: var(--surface-muted); }
+.password-strength[data-score='0'] .strength-bar .filled,
+.password-strength[data-score='1'] .strength-bar .filled { background: var(--danger); }
+.password-strength[data-score='2'] .strength-bar .filled { background: var(--warning); }
+.password-strength[data-score='3'] .strength-bar .filled,
+.password-strength[data-score='4'] .strength-bar .filled { background: var(--success); }
+.strength-label { margin: 6px 0 0; color: var(--muted); font-size: 0.78rem; }
+.strength-label strong { color: var(--text); font-weight: 500; }
+.strength-warning { margin: 6px 0 0; color: var(--warning); font-size: 0.78rem; line-height: 1.5; }
+
+.pwa-banner { position: fixed; z-index: 30; right: 16px; bottom: 16px; left: 16px; display: flex; max-width: 520px; align-items: center; justify-content: space-between; gap: 14px; margin-left: auto; padding: 12px 14px; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: 0 8px 20px rgb(0 0 0 / 14%); }
+.pwa-banner p { margin: 0; font-size: 0.8rem; line-height: 1.5; }
+.pwa-banner .button { flex-shrink: 0; }
+/* Keep the footer and last rows reachable while the update banner is shown. */
+body:has(.pwa-banner) .site-footer { margin-bottom: 96px; }

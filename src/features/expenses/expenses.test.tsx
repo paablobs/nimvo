@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -53,7 +52,7 @@ function renderWorkspace(initialCategories: Category[], initialExpenses: Expense
   function Harness() {
     const [viewCategories, setViewCategories] = useState(categories)
     const [viewExpenses, setViewExpenses] = useState(expenses)
-    return <ChakraProvider value={defaultSystem}><VaultProvider session={session}><ExpensesPanel monthId="month-1" year={2026} month={1} categories={viewCategories} expenses={viewExpenses} onRefresh={async () => setViewExpenses([...expenses])} onCategoriesRefresh={async () => { setViewCategories([...categories]); if (options.deferCategoriesRefresh) await new Promise<void>((resolve) => { releaseCategoriesRefresh = resolve }) }} /><CategoriesPanel categories={viewCategories} onRefresh={async () => setViewCategories([...categories])} onClose={vi.fn()} /></VaultProvider></ChakraProvider>
+    return <VaultProvider session={session}><ExpensesPanel monthId="month-1" year={2026} month={1} categories={viewCategories} expenses={viewExpenses} onRefresh={async () => setViewExpenses([...expenses])} onCategoriesRefresh={async () => { setViewCategories([...categories]); if (options.deferCategoriesRefresh) await new Promise<void>((resolve) => { releaseCategoriesRefresh = resolve }) }} /><CategoriesPanel categories={viewCategories} onRefresh={async () => setViewCategories([...categories])} onClose={vi.fn()} /></VaultProvider>
   }
   return {
     session,

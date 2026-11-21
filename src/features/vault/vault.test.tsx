@@ -1,4 +1,3 @@
-import { ChakraProvider, defaultSystem } from '@chakra-ui/react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -77,13 +76,11 @@ async function legacyFile(password: string): Promise<Uint8Array> {
 }
 
 const renderCreate = (session: VaultSession) => render(
-  <ChakraProvider value={defaultSystem}>
-    <VaultProvider session={session}>
-      <MemoryRouter>
-        <CreateVaultPage />
-      </MemoryRouter>
-    </VaultProvider>
-  </ChakraProvider>,
+  <VaultProvider session={session}>
+    <MemoryRouter>
+      <CreateVaultPage />
+    </MemoryRouter>
+  </VaultProvider>,
 )
 
 describe('VaultSession', () => {
@@ -330,9 +327,7 @@ describe('vault UI', () => {
   it('installs beforeunload only while dirty', async () => {
     const session = new VaultSession({ createClient: () => fakeClient() })
     render(
-      <ChakraProvider value={defaultSystem}>
-        <VaultProvider session={session}><span>probe</span></VaultProvider>
-      </ChakraProvider>,
+      <VaultProvider session={session}><span>probe</span></VaultProvider>,
     )
     await act(() => session.create('password-1'))
     const dirtyEvent = new Event('beforeunload', { cancelable: true })

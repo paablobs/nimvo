@@ -1,4 +1,4 @@
-import { Button, Input } from '@chakra-ui/react'
+import { Button, Input } from '../../components/controls.tsx'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import AccessibleDialog from '../../components/AccessibleDialog.tsx'
