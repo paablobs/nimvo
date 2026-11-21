@@ -9,6 +9,7 @@ import type { DomainOperation } from '../../db/worker/protocol.ts'
 import { VaultProvider } from '../vault/VaultProvider.tsx'
 import { VaultSession, type DatabaseClientLike } from '../vault/VaultSession.ts'
 import HistoryPage from './HistoryPage.tsx'
+import { I18nProvider } from '../../i18n/i18n.tsx'
 
 const historyRows = [
   {
@@ -32,7 +33,7 @@ const clientFor = (operation: (value: DomainOperation) => unknown): DatabaseClie
 })
 
 function renderHistory(session: VaultSession) {
-  return render(<ChakraProvider value={defaultSystem}><VaultProvider session={session}><MemoryRouter initialEntries={['/boveda/historial']}><HistoryPage /></MemoryRouter></VaultProvider></ChakraProvider>)
+  return render(<ChakraProvider value={defaultSystem}><I18nProvider><VaultProvider session={session}><MemoryRouter initialEntries={['/boveda/historial']}><HistoryPage /></MemoryRouter></VaultProvider></I18nProvider></ChakraProvider>)
 }
 
 describe('monthly history', () => {
@@ -65,6 +66,18 @@ describe('monthly history', () => {
     expect(screen.getByRole('table', { name: 'Category September 2026' })).toHaveTextContent('Comida vieja')
     expect(screen.getByText('Archived')).toBeVisible()
     expect(within(rows[1]).getByRole('button', { name: /breakdown/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('shows the change against the previous month and a chart with a text alternative', async () => {
+    const session = new VaultSession({ createClient: () => clientFor((operation) => operation.kind === 'history.list' ? historyRows : undefined) })
+    await session.create('test-password')
+    renderHistory(session)
+
+    const table = await screen.findByRole('table', { name: 'Monthly history' })
+    const rows = within(table).getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('+$ 1,010.00 vs. previous month')
+    expect(rows[2]).not.toHaveTextContent('vs. previous month')
+    expect(screen.getByRole('img', { name: /Bar chart of income and total spending/ })).toBeInTheDocument()
   })
 
   it('does not present an empty state when history loading fails', async () => {

@@ -57,3 +57,22 @@ export function clampDueDay(year: number, month: number, dueDay: number): number
 export function adjustDueDay(year: number, month: number, dueDay: number): number {
   return clampDueDay(year, month, dueDay)
 }
+
+/**
+ * Formats a civil date for display without any time-zone semantics: the
+ * calendar fields are formatted as UTC so the result never shifts by a day.
+ */
+export function formatCivilDate(value: CivilDate, locale: 'en-US' | 'es-AR'): string {
+  if (!isValidCivilDate(value)) throw new RangeError('Fecha civil inválida')
+  const [year, month, day] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day)))
+}
+
+/**
+ * Display-only variant of `formatCivilDate`: a malformed stored value (hand
+ * edited or imported data) is shown as-is instead of failing the whole view.
+ */
+export function displayCivilDate(value: string, locale: 'en-US' | 'es-AR'): string {
+  return isValidCivilDate(value) ? formatCivilDate(value, locale) : value
+}

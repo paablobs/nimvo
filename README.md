@@ -13,11 +13,13 @@ No usa backend, cuentas de usuario ni servicios externos. La base SQLite se ejec
 - Registrar, editar y eliminar gastos diarios.
 - Crear, renombrar y archivar categorías.
 - Consultar gastos agrupados por categoría.
-- Comparar meses y desplegar su desglose por categoría.
+- Comparar meses, ver la variación del saldo frente al mes anterior, un gráfico de ingresos contra gastos y el desglose por categoría.
 - Guardar el archivo en una ubicación elegida o descargar una copia.
 - Avisar cuando hay cambios sin guardar antes de cerrar la pestaña.
 - Bloquear automáticamente la bóveda después de 15 minutos sin actividad, incluso si hay cambios sin guardar.
 - Alternar entre tema claro y oscuro.
+- Ver las fechas de vencimiento y de los gastos en formato local (por ejemplo, `5 oct 2026`); internamente siguen guardándose como `YYYY-MM-DD`.
+- En pantallas angostas, los gastos fijos y los gastos se muestran como tarjetas apiladas, sin desplazamiento horizontal.
 
 La interfaz admite español e inglés. Inglés es el idioma inicial; el selector de preferencias del encabezado permite cambiarlo. Cada bóveda guarda una moneda única: ARS (por defecto), USD o EUR. ARS y USD se muestran con `$`; EUR se muestra con `€`. Cambiar la moneda no convierte los importes: solo cambia su denominación. ARS, USD y EUR pueden mostrarse como `1,234.56` o `1.234,56`, y la preferencia numérica se conserva al cambiar de idioma. Internamente, todo se calcula con centavos enteros para evitar errores de punto flotante.
 
@@ -197,7 +199,7 @@ Los cambios enviados a `main` se compilan y publican en GitHub Pages mediante el
 - Sin backend, cuentas, recuperación remota ni sincronización propia.
 - Sin colaboración entre varias personas o pestañas.
 - Sin importación automática desde Excel o bancos.
-- Sin presupuestos por categoría, cuotas, conciliación bancaria ni gráficos avanzados.
+- Sin presupuestos por categoría, cuotas, conciliación bancaria ni gráficos avanzados (el historial incluye un único gráfico de barras).
 - Sin aplicación móvil nativa.
 - Sin recuperación de contraseña.
 - Cerrar con cambios sin guardar puede provocar pérdida de datos.
@@ -217,10 +219,12 @@ It has no backend, user accounts, or remote database. SQLite runs inside the bro
 - Create, edit, reorder, pay, and delete each month's fixed expenses.
 - Create, edit, and delete daily expenses.
 - Create, rename, and archive expense categories.
-- Review expenses by category and compare monthly history.
+- Review expenses by category and compare monthly history, including balance change against the previous month and an income-versus-spending chart.
 - Save directly to a selected file in supported Chromium browsers or download a copy in other browsers.
 - Automatically lock the vault after 15 minutes without activity, even when there are unsaved changes.
 - Warn about unsaved changes and switch between light and dark themes.
+- Show due and expense dates in the local format (for example `Oct 5, 2026`); they are still stored as `YYYY-MM-DD`.
+- On narrow screens, fixed expenses and expenses render as stacked cards without horizontal scrolling.
 
 Each vault uses one stored currency: ARS by default, USD, or EUR. ARS and USD use `$`; EUR uses `€`. Changing the currency changes the denomination without converting amounts. Amounts can use `1,234.56` or `1.234,56` formatting. Calculations use integer cents to avoid floating-point errors. The monthly balance is income minus total fixed expenses and daily expenses. Marking a fixed expense as paid changes the pending fixed-expense amount but not the balance because the expense was already included in the total.
 Fixed expenses with an unknown amount remain pending and are excluded from totals and balance until their amount is entered.
@@ -275,4 +279,4 @@ The application bundles its source, SQLite WASM, and the Lexend font. Amounts, d
 
 ## Current limitations
 
-Nimvo supports one currency per vault: ARS. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts, native mobile application, or password recovery.
+Nimvo supports one currency per vault (ARS, USD, or EUR) and does not convert between them. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts (the history includes a single income-versus-spending bar chart), native mobile application, or password recovery.
