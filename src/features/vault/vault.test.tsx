@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { VaultProvider } from './VaultProvider.tsx'
-import { VaultSession, type DatabaseClientLike } from './VaultSession.ts'
+import { VaultSession, type DatabaseClientLike, type VaultSessionOptions } from './VaultSession.ts'
 import type { VaultFileAccessLike, VaultFileHandle, VaultFileSelection } from './VaultFileAccess.ts'
 import CreateVaultPage from './CreateVaultPage.tsx'
+import { createVaultKey, encryptVault } from '../../crypto/vault.ts'
+import { testKdf } from '../../test/testKdf.ts'
 import {
   LEGACY_MONEO_MAGIC,
   NIMVO_HEADER_LENGTH,
@@ -153,6 +155,57 @@ describe('VaultSession', () => {
     expect(client.open).toHaveBeenCalledOnce()
   })
 
+  it('upgrades a v1 file to v2 on the next save and the result reopens with the same password', async () => {
+    const key = await importPasswordKey('password-1')
+    const v1 = await encryptSqliteBytes(new Uint8Array([1, 2, 3]), key, { iterations: 1_000 })
+    expect(v1[5]).toBe(1)
+    const saved: Uint8Array[] = []
+    const session = new VaultSession({ createClient: () => fakeClient(), download: () => undefined, encrypt: async (plaintext, vaultKey) => { const out = await encryptVault(plaintext, vaultKey); saved.push(new Uint8Array(out)); return out } })
+    await session.open(v1, 'password-1')
+    await session.save()
+    const v2 = saved[0]
+    expect(v2[5]).toBe(2)
+
+    const reopened = new VaultSession({ createClient: () => fakeClient() })
+    await reopened.open(v2, 'password-1')
+    expect(reopened.getSnapshot().status).toBe('unlocked')
+    const wrong = new VaultSession({ createClient: () => fakeClient() })
+    await expect(wrong.open(v2, 'password-2')).rejects.toThrow()
+    expect(wrong.getSnapshot().status).toBe('error')
+  })
+
+  it('keeps encrypting with the original key after a failed attempt to open another file', async () => {
+    const saved: Uint8Array[] = []
+    const session = new VaultSession({ createClient: () => fakeClient(), download: () => undefined, encrypt: async (plaintext, vaultKey) => { const out = await encryptVault(plaintext, vaultKey); saved.push(new Uint8Array(out)); return out } })
+    await session.create('password-1')
+    await expect(session.open(new Uint8Array([1, 2, 3]), 'password-2')).rejects.toThrow()
+    await session.save()
+    const reopened = new VaultSession({ createClient: () => fakeClient() })
+    await reopened.open(saved[0], 'password-1')
+    expect(reopened.getSnapshot().status).toBe('unlocked')
+  })
+
+  it('keeps encrypting with the previous key when a candidate fails after it was authenticated', async () => {
+    const saved: Uint8Array[] = []
+    let clients = 0
+    const session = new VaultSession({
+      createClient: () => (++clients === 2 ? fakeClient({ open: vi.fn(async () => { throw new Error('worker failed') }) }) : fakeClient()),
+      download: () => undefined,
+      encrypt: async (plaintext, vaultKey) => { const out = await encryptVault(plaintext, vaultKey); saved.push(new Uint8Array(out)); return out },
+    })
+    await session.create('password-1')
+    const otherKey = await createVaultKey('password-2', { kdf: testKdf })
+    const other = await encryptVault(new Uint8Array([9]), otherKey)
+
+    // The file authenticates (the derivation succeeded) but the database worker fails.
+    await expect(session.open(other, 'password-2')).rejects.toThrow('worker failed')
+    expect(session.getSnapshot().status).toBe('unlocked')
+    await session.save()
+    const reopened = new VaultSession({ createClient: () => fakeClient() })
+    await reopened.open(saved[0], 'password-1')
+    expect(reopened.getSnapshot().status).toBe('unlocked')
+  })
+
   it('keeps an active dirty vault intact when a replacement candidate fails', async () => {
     const oldClient = fakeClient()
     const failedCreate = fakeClient({ open: vi.fn(async () => { throw new Error('candidate create failed') }) })
@@ -189,7 +242,7 @@ describe('VaultSession', () => {
       iterations: 1_000,
       rng: (length: number): Uint8Array => new Uint8Array(length).fill(9),
     })
-    file[5] = 2
+    file[5] = 3 // version 2 is now a real format; 3 stands for a future one
     const session = new VaultSession({ createClient: () => fakeClient() })
     await expect(session.open(file, 'password-1')).rejects.toThrow(UNSUPPORTED_NIMVO_VERSION_MESSAGE)
     expect(session.getSnapshot().error).toBe(UNSUPPORTED_NIMVO_VERSION_MESSAGE)
@@ -200,7 +253,7 @@ describe('VaultSession', () => {
     const fileAccess = fakeFileAccess({ saveAs: vi.fn(async () => ({ name: target.name ?? 'presupuesto.nimvo', target })) })
     const write = fileAccess.write as ReturnType<typeof vi.fn>
     const saveAs = fileAccess.saveAs as ReturnType<typeof vi.fn>
-    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([4])) as typeof encryptSqliteBytes })
+    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([4])) as NonNullable<VaultSessionOptions['encrypt']> })
     await session.create('password-1')
 
     const firstSave = session.saveToFile()
@@ -223,7 +276,7 @@ describe('VaultSession', () => {
       .mockResolvedValueOnce({ name: second.name, target: second })
     const download = vi.fn()
     const fileAccess = fakeFileAccess({ saveAs, write: vi.fn(async () => undefined) })
-    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, download, encrypt: vi.fn(async () => new Uint8Array([5])) as typeof encryptSqliteBytes })
+    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, download, encrypt: vi.fn(async () => new Uint8Array([5])) as NonNullable<VaultSessionOptions['encrypt']> })
     await session.create('password-1')
     await session.saveToFile()
     await session.operation({ kind: 'months.create', year: 2026, month: 1, initialAmountCents: 1 })
@@ -240,7 +293,7 @@ describe('VaultSession', () => {
   it('keeps dirty and target state when picker or write is cancelled or fails', async () => {
     const target = fakeTarget('activo.nimvo')
     const fileAccess = fakeFileAccess({ saveAs: vi.fn(async () => null) })
-    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([6])) as typeof encryptSqliteBytes })
+    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([6])) as NonNullable<VaultSessionOptions['encrypt']> })
     await session.create('password-1')
     const cancelledSave = session.saveToFile()
     expect(fileAccess.saveAs).toHaveBeenCalledOnce()
@@ -251,7 +304,7 @@ describe('VaultSession', () => {
       saveAs: vi.fn(async () => ({ name: target.name ?? 'activo.nimvo', target })),
       write: vi.fn(async () => undefined),
     })
-    const linked = new VaultSession({ createClient: () => fakeClient(), fileAccess: linkedAccess, encrypt: vi.fn(async () => new Uint8Array([7])) as typeof encryptSqliteBytes })
+    const linked = new VaultSession({ createClient: () => fakeClient(), fileAccess: linkedAccess, encrypt: vi.fn(async () => new Uint8Array([7])) as NonNullable<VaultSessionOptions['encrypt']> })
     await linked.create('password-1')
     await linked.saveToFile()
     const failedWrite = linkedAccess.write as ReturnType<typeof vi.fn>
@@ -305,7 +358,7 @@ describe('VaultSession', () => {
   it('clears the linked target when locking', async () => {
     const target = fakeTarget('activo.nimvo')
     const fileAccess = fakeFileAccess({ saveAs: vi.fn(async () => ({ name: target.name ?? 'activo.nimvo', target })) })
-    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([8])) as typeof encryptSqliteBytes })
+    const session = new VaultSession({ createClient: () => fakeClient(), fileAccess, encrypt: vi.fn(async () => new Uint8Array([8])) as NonNullable<VaultSessionOptions['encrypt']> })
     await session.create('password-1')
     await session.saveToFile()
     await session.lock()
