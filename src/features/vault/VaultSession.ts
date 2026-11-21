@@ -1,13 +1,19 @@
 import { createDatabaseClient, type DatabaseClient } from '../../db/index.ts'
 import type { DomainOperation } from '../../db/worker/protocol.ts'
 import {
-  decryptNimvoFile,
-  encryptSqliteBytes,
-  importPasswordKey,
   INVALID_NIMVO_FILE_MESSAGE,
   NimvoCryptoError,
   UNSUPPORTED_NIMVO_VERSION_MESSAGE,
 } from '../../crypto/index.ts'
+import { defaultKdf, type Kdf } from '../../crypto/kdf.ts'
+import {
+  clearVaultKey,
+  createVaultKey,
+  encryptVault,
+  openVaultContainer,
+  type FormatVersion,
+  type VaultKey,
+} from '../../crypto/vault.ts'
 import {
   isAbortError,
   VaultFileAccess,
@@ -27,6 +33,8 @@ export interface VaultSnapshot {
   activeFileName: string | null
   directFileAccessSupported: boolean
   currency: CurrencyCode
+  /** The open file uses an older container format; the next save rewrites it in the current one. */
+  formatUpgradePending: boolean
 }
 
 export interface DatabaseClientLike {
@@ -43,7 +51,11 @@ export interface SaveResult {
 
 export interface VaultSessionOptions {
   createClient?: () => DatabaseClientLike
-  encrypt?: typeof encryptSqliteBytes
+  encrypt?: (plaintext: Uint8Array, key: VaultKey) => Promise<Uint8Array>
+  /** Key-derivation strategy; defaults to Argon2id in a Worker. */
+  kdf?: Kdf
+  /** Container version written on save; defaults to the current format. */
+  formatVersion?: FormatVersion
   download?: (blob: Blob, filename: string) => void | Promise<void>
   now?: () => Date
   fileAccess?: VaultFileAccessLike
@@ -72,6 +84,7 @@ const initialSnapshot = (directFileAccessSupported = false): VaultSnapshot => ({
   activeFileName: null,
   directFileAccessSupported,
   currency: DEFAULT_CURRENCY,
+  formatUpgradePending: false,
 })
 
 const pad = (value: number): string => String(value).padStart(2, '0')
@@ -96,11 +109,11 @@ const closeQuietly = async (client: DatabaseClientLike | undefined): Promise<voi
 
 /** Owns the in-memory key and worker for one unlocked vault. */
 export class VaultSession {
-  private readonly options: Required<Pick<VaultSessionOptions, 'createClient' | 'encrypt' | 'download' | 'now'>>
+  private readonly options: Required<Pick<VaultSessionOptions, 'createClient' | 'encrypt' | 'download' | 'now' | 'kdf'>> & Pick<VaultSessionOptions, 'formatVersion'>
   private readonly fileAccess: VaultFileAccessLike
   private snapshot: VaultSnapshot
   private client: DatabaseClientLike | undefined
-  private passwordKey: CryptoKey | undefined
+  private vaultKey: VaultKey | undefined
   private activeTarget: VaultFileHandle | undefined
   private queue: Promise<unknown> = Promise.resolve()
   private readonly listeners = new Set<Listener>()
@@ -108,7 +121,9 @@ export class VaultSession {
   constructor(options: VaultSessionOptions = {}) {
     this.options = {
       createClient: options.createClient ?? (() => createDatabaseClient()),
-      encrypt: options.encrypt ?? encryptSqliteBytes,
+      encrypt: options.encrypt ?? ((plaintext, key) => encryptVault(plaintext, key)),
+      kdf: options.kdf ?? defaultKdf(),
+      formatVersion: options.formatVersion,
       download: options.download ?? browserDownload,
       now: options.now ?? (() => new Date()),
     }
@@ -134,8 +149,12 @@ export class VaultSession {
     return run
   }
 
+  private cryptoOptions() {
+    return { kdf: this.options.kdf, formatVersion: this.options.formatVersion }
+  }
+
   private requireClient(): DatabaseClientLike {
-    if (this.snapshot.status !== 'unlocked' || !this.client || !this.passwordKey) {
+    if (this.snapshot.status !== 'unlocked' || !this.client || !this.vaultKey) {
       throw new Error('La bóveda está bloqueada.')
     }
     return this.client
@@ -145,26 +164,33 @@ export class VaultSession {
     return this.enqueue(async () => {
       const previousSnapshot = this.snapshot
       const previousClient = this.client
-      const previousKey = this.passwordKey
+      const previousKey = this.vaultKey
       this.setSnapshot({ status: 'opening', error: null })
-      let key: CryptoKey | undefined
+      let key: VaultKey | undefined
       let candidate: DatabaseClientLike | undefined
+      let committed = false
       try {
-        key = await importPasswordKey(password)
+        key = await createVaultKey(password, this.cryptoOptions())
         candidate = this.options.createClient()
         await candidate.open()
         const currency = await candidate.operation<unknown>({ kind: 'vault.getCurrency' })
         await closeQuietly(this.client)
+        const replacedKey = this.vaultKey
         this.client = candidate
-        this.passwordKey = key
+        this.vaultKey = key
+        clearVaultKey(replacedKey)
+        committed = true
         candidate = undefined
         key = undefined
         this.activeTarget = undefined
-        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null, currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY })
+        this.setSnapshot({ status: 'unlocked', dirty: true, lastExportAt: null, error: null, activeFileName: null, formatUpgradePending: false, currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY })
       } catch (error) {
+        // Once the new state is committed the previous client and key are gone; never roll back to them.
+        if (committed) throw error
         await closeQuietly(candidate)
+        clearVaultKey(key)
         this.client = previousClient
-        this.passwordKey = previousKey
+        this.vaultKey = previousKey
         this.setSnapshot(previousSnapshot.status === 'unlocked'
           ? previousSnapshot
           : { ...previousSnapshot, status: 'error', dirty: false, error: 'No se pudo crear la bóveda.' })
@@ -176,42 +202,50 @@ export class VaultSession {
   private async openBytes(bytes: Uint8Array, password: string, selection: VaultFileSelection | null): Promise<void> {
       const previousSnapshot = this.snapshot
       const previousClient = this.client
-      const previousKey = this.passwordKey
+      const previousKey = this.vaultKey
       const previousTarget = this.activeTarget
       this.setSnapshot({ status: 'opening', error: null })
       const container = new Uint8Array(bytes)
       let plaintext: Uint8Array | undefined
-      let key: CryptoKey | undefined
+      let key: VaultKey | undefined
       let candidate: DatabaseClientLike | undefined
+      let committed = false
       try {
         // Authentication happens before constructing or opening a worker.
-        const decrypted = await decryptNimvoFile(container, password)
+        const decrypted = await openVaultContainer(container, password, this.cryptoOptions())
         plaintext = decrypted.plaintext
-        key = decrypted.passwordKey
+        key = decrypted.vaultKey
         candidate = this.options.createClient()
         // DatabaseClient transfers its argument, so this copy is disposable.
         await candidate.open(new Uint8Array(plaintext))
         const currency = await candidate.operation<unknown>({ kind: 'vault.getCurrency' })
         await closeQuietly(this.client)
+        const replacedKey = this.vaultKey
         this.client = candidate
-        this.passwordKey = key
+        this.vaultKey = key
+        clearVaultKey(replacedKey)
+        committed = true
         candidate = undefined
         key = undefined
         // Legacy-format files are read-only imports. Never keep their picker
         // handle, otherwise a later save could overwrite the old format.
-        this.activeTarget = selection && decrypted.metadata.format === 'nimvo' ? selection.target : undefined
+        this.activeTarget = selection && decrypted.format === 'nimvo' ? selection.target : undefined
         this.setSnapshot({
           status: 'unlocked',
           dirty: false,
           lastExportAt: null,
           error: null,
-          activeFileName: selection && decrypted.metadata.format === 'nimvo' ? selection.name : null,
+          activeFileName: selection && decrypted.format === 'nimvo' ? selection.name : null,
           currency: isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY,
+          // A v1 or legacy file is rewritten in the current format by the next save.
+          formatUpgradePending: decrypted.sourceVersion === 1 && decrypted.vaultKey.kind === 'argon2id',
         })
       } catch (error) {
+        if (committed) throw error
         await closeQuietly(candidate)
+        clearVaultKey(key)
         this.client = previousClient
-        this.passwordKey = previousKey
+        this.vaultKey = previousKey
         this.activeTarget = previousTarget
         const errorMessage = error instanceof NimvoCryptoError && error.code === 'UNSUPPORTED_VERSION'
           ? UNSUPPORTED_NIMVO_VERSION_MESSAGE
@@ -272,7 +306,7 @@ export class VaultSession {
 
   private async exportEncrypted(): Promise<{ bytes: Uint8Array; exportedAt: Date }> {
     const client = this.requireClient()
-    const key = this.passwordKey
+    const key = this.vaultKey
     if (!key) throw new Error('La bóveda está bloqueada.')
     const exported = await client.export()
     try {
@@ -288,7 +322,7 @@ export class VaultSession {
     try {
       const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/octet-stream' })
       await this.options.download(blob, filename)
-      this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null })
+      this.setSnapshot({ dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
       return { filename, exportedAt }
     } catch (error) {
       this.setSnapshot({ error: 'No se pudo guardar la copia.' })
@@ -340,7 +374,7 @@ export class VaultSession {
           await this.options.download(blob, suggestedName)
         }
         this.activeTarget = selectedTarget
-        this.setSnapshot({ activeFileName: selectedTarget ? selectedName : null, dirty: false, lastExportAt: exportedAt, error: null })
+        this.setSnapshot({ activeFileName: selectedTarget ? selectedName : null, dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
         return { filename: selectedTarget ? selectedName : suggestedName, exportedAt }
       } catch (error) {
         if (isAbortError(error)) return null
@@ -379,7 +413,7 @@ export class VaultSession {
       try {
         await this.fileAccess.write(selection.target, bytes)
         this.activeTarget = selection.target
-        this.setSnapshot({ activeFileName: selection.name, dirty: false, lastExportAt: exportedAt, error: null })
+        this.setSnapshot({ activeFileName: selection.name, dirty: false, lastExportAt: exportedAt, error: null, formatUpgradePending: false })
         return { filename: selection.name, exportedAt }
       } catch (error) {
         if (isAbortError(error)) return null
@@ -405,7 +439,8 @@ export class VaultSession {
     return this.enqueue(async () => {
       const client = this.client
       this.client = undefined
-      this.passwordKey = undefined
+      clearVaultKey(this.vaultKey)
+      this.vaultKey = undefined
       this.activeTarget = undefined
       await closeQuietly(client)
       this.setSnapshot({ ...initialSnapshot(this.fileAccess.directFileAccessSupported) })

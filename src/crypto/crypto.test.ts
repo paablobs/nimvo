@@ -4,6 +4,7 @@ import {
   DEFAULT_PBKDF2_ITERATIONS,
   LEGACY_MONEO_MAGIC,
   INVALID_NIMVO_FILE_MESSAGE,
+  UNSUPPORTED_NIMVO_VERSION_MESSAGE,
   NIMVO_HEADER_LENGTH,
   NIMVO_IV_LENGTH,
   NIMVO_SALT_LENGTH,
@@ -128,7 +129,7 @@ describe('Nimvo crypto container', () => {
     await expect(decryptNimvoFile(container, password)).rejects.toMatchObject({
       name: 'NimvoCryptoError',
       code: 'UNSUPPORTED_VERSION',
-      message: 'Versión de archivo no soportada',
+      message: UNSUPPORTED_NIMVO_VERSION_MESSAGE,
     })
   })
 

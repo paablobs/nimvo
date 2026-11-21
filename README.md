@@ -108,14 +108,17 @@ magic | versión | parámetros KDF | salt | IV | SQLite cifrado + tag
 ```
 
 - AES-256-GCM cifra y autentica el contenido.
-- PBKDF2-HMAC-SHA-256 deriva la clave con un salt aleatorio y 1.800.000 iteraciones.
-- Cada exportación genera un salt de 16 bytes y un IV de 12 bytes mediante Web Crypto.
-- La cabecera forma parte de los datos autenticados.
-- La contraseña y la clave derivada permanecen en memoria.
+- Argon2id (formato v2) deriva la clave con un salt aleatorio de 16 bytes y estos parámetros, guardados en la cabecera: 64 MiB de memoria, 3 pasadas y paralelismo 1. La derivación corre en un Web Worker propio que se cierra al terminar.
+- Al abrir un archivo, los parámetros se validan antes de derivar nada (memoria entre 19 MiB y 256 MiB, 2 a 10 pasadas, paralelismo 1), de modo que un archivo manipulado no puede forzar un consumo excesivo.
+- El salt es fijo por archivo y cada guardado genera un IV nuevo de 12 bytes mediante Web Crypto. La clave se deriva una sola vez al crear o abrir la bóveda.
+- La cabecera, incluidos los parámetros de Argon2id, forma parte de los datos autenticados.
+- La contraseña no se conserva: tras derivar la clave se descarta, y en memoria queda solo una clave AES no extraíble de uso exclusivo para cifrar.
 - La base descifrada vive en la memoria del Web Worker de SQLite.
 - Los buffers sensibles se sobrescriben cuando dejan de usarse, dentro de las limitaciones de JavaScript.
 - Un archivo alterado, truncado o abierto con otra contraseña se rechaza sin cargar datos parciales.
 - El tamaño máximo aceptado para un contenedor es 128 MiB.
+
+Los archivos del formato v1 (PBKDF2-HMAC-SHA-256 con 1.800.000 iteraciones) se siguen abriendo. **La primera vez que se guarda un archivo v1, se escribe en el formato v2, y las versiones anteriores de Nimvo no pueden abrir un archivo v2** (muestran que el archivo es de una versión más nueva). Al abrir un archivo v1, Nimvo muestra un aviso antes del primer guardado. Si usás varios equipos con la misma carpeta sincronizada, actualizá Nimvo en todos antes de guardar.
 
 Las versiones actuales también pueden abrir archivos `.moneo` creados por versiones anteriores. Al abrir uno, Nimvo lo trata como una importación de compatibilidad y la próxima copia se guarda como `.nimvo`; un archivo legado abierto desde el selector no queda vinculado para sobrescritura.
 
@@ -158,7 +161,7 @@ Tablas principales:
 - Controles HTML nativos con estilos propios (sin biblioteca de componentes).
 - React Router 7.
 - sql.js y SQLite WebAssembly.
-- Web Crypto API.
+- Web Crypto API y `hash-wasm` (Argon2id).
 - Zod.
 - `@zxcvbn-ts` (solo listas independientes del idioma), cargado bajo demanda para el indicador de seguridad de la contraseña.
 - Lexend variable, autohospedada y empaquetada con la aplicación mediante `@fontsource-variable/lexend` bajo SIL OFL 1.1. Los importes, fechas y campos numéricos usan la fuente monoespaciada del sistema.
@@ -256,17 +259,17 @@ There are no required environment variables. Use `npm run build` and `npm run pr
 
 Create a new vault with a password or open an existing `.nimvo` file. Save or download a fresh copy after making changes. Keep at least one older backup, avoid editing the same copy on two devices at once, and wait for cloud-synced folders to finish syncing before switching devices.
 
-Passwords cannot be recovered. Without the password, the encrypted financial data cannot be recovered either. Current versions can import legacy `.moneo` files and save the next copy in the `.nimvo` format.
+Passwords cannot be recovered. Without the password, the encrypted financial data cannot be recovered either. Current versions can import legacy `.moneo` files and save the next copy in the `.nimvo` format. Version 1 files (PBKDF2-HMAC-SHA-256, 1,800,000 iterations) still open, but the first save rewrites them as version 2, which older Nimvo versions cannot open: Nimvo shows a notice when you open a version 1 file, before the first save; update Nimvo on every device that shares the synced file before saving.
 
 ## Security
 
-The `.nimvo` format is a versioned binary container, not a plain SQLite database. It uses AES-256-GCM for authenticated encryption and PBKDF2-HMAC-SHA-256 with a random salt and 1,800,000 iterations for key derivation. Each export receives a new salt and IV. Modified, truncated, oversized, or incorrectly decrypted files are rejected before partial data is loaded.
+The `.nimvo` format is a versioned binary container, not a plain SQLite database. It uses AES-256-GCM for authenticated encryption and, in the current v2 format, Argon2id for key derivation with a random 16-byte salt and parameters stored in the header (64 MiB of memory, 3 passes, parallelism 1), run in a dedicated Web Worker that is terminated afterwards. The parameters are range-checked before any derivation (19 MiB to 256 MiB, 2 to 10 passes, parallelism 1), so a crafted file cannot force excessive memory use, and they are authenticated with the rest of the header. The salt is fixed per file and every save draws a new 12-byte IV; the key is derived once when the vault is created or opened. The password is not retained: only a non-extractable, encrypt-only AES key stays in memory. Modified, truncated, oversized, or incorrectly decrypted files are rejected before partial data is loaded.
 
 The decrypted database remains in the SQLite Web Worker memory. Sensitive buffers are overwritten when they are no longer needed, within JavaScript runtime limitations. The maximum accepted container size is 128 MiB.
 
 ## Development
 
-The application uses React 19, TypeScript 6, Vite 8, React Router 7, sql.js, Web Crypto, Zod, and `@zxcvbn-ts` (lazy-loaded for the password indicator). Vitest and React Testing Library cover unit and component behavior; Playwright covers full Chromium and Firefox flows.
+The application uses React 19, TypeScript 6, Vite 8, React Router 7, sql.js, Web Crypto, hash-wasm (Argon2id), Zod, and `@zxcvbn-ts` (lazy-loaded for the password indicator). Vitest and React Testing Library cover unit and component behavior; Playwright covers full Chromium and Firefox flows.
 
 ```sh
 npm run lint

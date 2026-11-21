@@ -1,5 +1,8 @@
 /**
- * Nimvo encrypted-file container.
+ * Nimvo encrypted-file container, version 1 (PBKDF2-HMAC-SHA-256).
+ *
+ * Version 2 (Argon2id) lives in `container-v2.ts`; this module is the
+ * unchanged reader/writer for version 1 and for legacy `.moneo` imports.
  *
  * Binary layout (all integer fields are unsigned big-endian):
  *
@@ -34,7 +37,7 @@ export const MAX_PBKDF2_ITERATIONS = 2_000_000
 export const MAX_CIPHERTEXT_LENGTH = 128 * 1024 * 1024
 
 export const INVALID_NIMVO_FILE_MESSAGE = 'Contraseña incorrecta o archivo dañado'
-export const UNSUPPORTED_NIMVO_VERSION_MESSAGE = 'Versión de archivo no soportada'
+export const UNSUPPORTED_NIMVO_VERSION_MESSAGE = 'Este archivo es de una versión más nueva de Nimvo. Recargá o actualizá la aplicación e intentá de nuevo.'
 
 export type NimvoErrorCode = 'INVALID_FILE' | 'UNSUPPORTED_VERSION'
 
@@ -84,9 +87,9 @@ interface ParsedContainer {
   metadata: NimvoMetadata
 }
 
-const invalidFile = (): NimvoCryptoError => new NimvoCryptoError('INVALID_FILE')
+export const invalidFile = (): NimvoCryptoError => new NimvoCryptoError('INVALID_FILE')
 
-const getCrypto = (): Crypto => {
+export const getCrypto = (): Crypto => {
   const cryptoApi = globalThis.crypto
   if (!cryptoApi?.subtle || !cryptoApi.getRandomValues) {
     throw new Error('Web Crypto API no disponible')
@@ -94,7 +97,7 @@ const getCrypto = (): Crypto => {
   return cryptoApi
 }
 
-const isUint8Array = (value: unknown): value is Uint8Array => {
+export const isUint8Array = (value: unknown): value is Uint8Array => {
   if (!value || typeof value !== 'object' || !ArrayBuffer.isView(value)) return false
   const view = value as Uint8Array
   return view.constructor.name === 'Uint8Array' && view.byteLength === view.length
@@ -105,20 +108,20 @@ const asBytesCopy = (value: Uint8Array | ArrayBuffer): Uint8Array => {
   return new Uint8Array(value.slice(0))
 }
 
-const asArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
+export const asArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
   // Every internal byte array passed here is a fresh, tightly-sized copy. A
   // view is never transferred, so the caller's buffer cannot be detached.
   return bytes.buffer as ArrayBuffer
 }
 
-const writeU32 = (target: Uint8Array, offset: number, value: number): void => {
+export const writeU32 = (target: Uint8Array, offset: number, value: number): void => {
   target[offset] = (value >>> 24) & 0xff
   target[offset + 1] = (value >>> 16) & 0xff
   target[offset + 2] = (value >>> 8) & 0xff
   target[offset + 3] = value & 0xff
 }
 
-const readU32 = (source: Uint8Array, offset: number): number =>
+export const readU32 = (source: Uint8Array, offset: number): number =>
   source[offset] * 0x1000000 +
   source[offset + 1] * 0x10000 +
   source[offset + 2] * 0x100 +
@@ -134,7 +137,7 @@ const validateIterations = (iterations: number): void => {
   }
 }
 
-const randomBytes = (length: number, source?: RandomSource): Uint8Array => {
+export const randomBytes = (length: number, source?: RandomSource): Uint8Array => {
   if (!source) {
     const bytes = new Uint8Array(length)
     getCrypto().getRandomValues(bytes)
