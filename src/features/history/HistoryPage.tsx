@@ -18,7 +18,10 @@ function HistoryPage() {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
   const pageId = useId().replace(/:/g, '')
-  const deltas = useMemo(() => calculateBalanceDeltas(rows), [rows])
+  // A corrupt or extreme balance must only drop the comparison, never fail the page.
+  const deltas = useMemo(() => {
+    try { return calculateBalanceDeltas(rows) } catch { return rows.map(() => null) }
+  }, [rows])
 
   useEffect(() => {
     if (vault.status !== 'unlocked') return

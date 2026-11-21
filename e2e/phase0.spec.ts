@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
 test('landing page offers the current file actions', async ({ page }) => {
@@ -55,3 +56,13 @@ test('vault currency changes denomination without converting cents', async ({ pa
   await page.getByRole('dialog', { name: 'Preferences' }).getByRole('button', { name: 'EUR', exact: true }).click()
   await expect(summary.getByText('€\u00a01,234.00').first()).toBeVisible()
 })
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`landing page and its features section have no serious axe issues (${colorScheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'What you get' })).toBeVisible()
+    const results = await new AxeBuilder({ page }).analyze()
+    expect(results.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')).toEqual([])
+  })
+}

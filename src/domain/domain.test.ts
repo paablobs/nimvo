@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatCivilDate } from './dates.ts'
-import { calculateBalanceDeltas, totalSpending } from './history.ts'
+import { displayCivilDate, formatCivilDate } from './dates.ts'
+import { buildChartSlots, calculateBalanceDeltas, totalSpending, type MonthlyHistoryRow } from './history.ts'
 import { addCents, calculateMonthlySummary, formatCurrency, isSafeCents, parseMoneyToCents, parseSignedMoneyToCents, validateDebt, validateExpense } from './index.ts'
 
 describe('domain contracts', () => {
@@ -103,5 +103,40 @@ describe('history comparisons', () => {
 
   it('adds fixed and daily expenses for total spending', () => {
     expect(totalSpending({ debtTotal: 80_000, dailyExpenses: 30_000 })).toBe(110_000)
+  })
+})
+
+describe('displayCivilDate', () => {
+  it('formats valid dates and shows malformed stored values unchanged instead of throwing', () => {
+    expect(displayCivilDate('2026-10-05', 'en-US')).toBe('Oct 5, 2026')
+    expect(displayCivilDate('2026-02-30', 'en-US')).toBe('2026-02-30')
+    expect(displayCivilDate('not a date', 'es-AR')).toBe('not a date')
+  })
+})
+
+describe('buildChartSlots', () => {
+  const row = (year: number, month: number): MonthlyHistoryRow => ({
+    monthId: `${year}-${month}`, year, month, currency: 'ARS', initialAmountCents: 0, debtTotal: 0, debtPending: 0, dailyExpenses: 0, balance: 0, categoryBreakdown: [],
+  })
+  const labels = (rows: MonthlyHistoryRow[], max?: number) => buildChartSlots(rows, max).map((slot) => `${slot.year}-${slot.month}${slot.row ? '' : '!'}`)
+
+  it('is chronological and keeps empty slots for missing calendar months', () => {
+    expect(labels([row(2026, 4), row(2026, 2), row(2026, 1)])).toEqual(['2026-1', '2026-2', '2026-3!', '2026-4'])
+  })
+
+  it('crosses year boundaries', () => {
+    expect(labels([row(2026, 1), row(2025, 12), row(2025, 11)])).toEqual(['2025-11', '2025-12', '2026-1'])
+  })
+
+  it('keeps only the most recent calendar months', () => {
+    const rows = Array.from({ length: 15 }, (_, index) => row(2025 + Math.floor((14 - index) / 12), ((14 - index) % 12) + 1))
+    const slots = buildChartSlots(rows)
+    expect(slots).toHaveLength(12)
+    expect(slots[11]).toMatchObject({ year: 2026, month: 3 })
+    expect(slots[0]).toMatchObject({ year: 2025, month: 4 })
+  })
+
+  it('returns nothing for an empty history', () => {
+    expect(buildChartSlots([])).toEqual([])
   })
 })

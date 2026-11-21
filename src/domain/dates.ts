@@ -68,3 +68,11 @@ export function formatCivilDate(value: CivilDate, locale: 'en-US' | 'es-AR'): st
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
     .format(new Date(Date.UTC(year, month - 1, day)))
 }
+
+/**
+ * Display-only variant of `formatCivilDate`: a malformed stored value (hand
+ * edited or imported data) is shown as-is instead of failing the whole view.
+ */
+export function displayCivilDate(value: string, locale: 'en-US' | 'es-AR'): string {
+  return isValidCivilDate(value) ? formatCivilDate(value, locale) : value
+}
