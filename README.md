@@ -35,10 +35,6 @@ Los archivos creados con versiones anteriores se siguen abriendo, pero al guarda
 - Sin presupuestos por categoría, cuotas, conciliación bancaria ni gráficos avanzados.
 - Sin aplicación móvil nativa.
 
-## Para quien desarrolla
-
-La instalación, los comandos, la arquitectura, el formato del archivo y el despliegue están en [AGENTS.md](AGENTS.md).
-
 # English
 
 Nimvo is a local-first web application for managing monthly finances as a spreadsheet. It tracks months, recurring fixed expenses, daily expenses, categories, balances, and historical comparisons in one encrypted `.nimvo` file.
@@ -69,7 +65,3 @@ Files created by older versions still open, but saving them upgrades them to a f
 ## Current limitations
 
 Nimvo supports one currency per vault and does not convert between them. It has no account system, remote recovery, built-in synchronization, multi-user collaboration, automatic bank or spreadsheet imports, category budgets, installments, bank reconciliation, advanced charts, or native mobile application.
-
-## For developers
-
-Setup, commands, architecture, file format and deployment are in [AGENTS.md](AGENTS.md).
